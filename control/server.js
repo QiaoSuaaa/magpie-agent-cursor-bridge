@@ -536,7 +536,7 @@ export function createControlServer({repoRoot, port, log = console.log}) {
           'content-type': 'text/html; charset=utf-8',
           'cache-control': 'no-store',
           'x-content-type-options': 'nosniff',
-          'content-security-policy': `default-src 'none'; script-src ${origin} ${alt} 'unsafe-inline'; style-src ${origin} ${alt} 'unsafe-inline'; img-src ${origin} ${alt} data:; connect-src ${origin} ${alt}; font-src ${origin} ${alt}; base-uri 'none'; form-action 'none'; frame-ancestors 'self' wails: http://wails.localhost http://localhost:* http://127.0.0.1:*`
+          'content-security-policy': `default-src 'none'; script-src ${origin} ${alt} 'unsafe-inline'; style-src ${origin} ${alt} 'unsafe-inline'; img-src ${origin} ${alt} data:; connect-src ${origin} ${alt}; font-src ${origin} ${alt}; base-uri 'none'; form-action 'self' ${origin} ${alt}; frame-ancestors 'self' wails: http://wails.localhost http://localhost:* http://127.0.0.1:*`
         });
         return res.end(html);
       }

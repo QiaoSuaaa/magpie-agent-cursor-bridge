@@ -340,29 +340,35 @@
 
   /// 保存 Tab 补全专属参数配置
   async function saveTabSettings(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
     const btn = $('saveTabSettings');
-    btn.disabled = true;
-    btn.textContent = '保存中…';
-    $('tabSettingsHint').textContent = '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '保存中…';
+    }
+    if ($('tabSettingsHint')) $('tabSettingsHint').textContent = '';
     try {
       const current = lastOverview?.settings?.values || {};
       const body = {
         ...current,
-        tabMode: $('tabMode').value,
-        tabToken: $('tabToken').value.trim(),
-        tabModelId: $('tabModelId').value.trim(),
-        tabAddress: $('tabAddress').value.trim()
+        tabMode: $('tabMode')?.value || 'official',
+        tabToken: ($('tabToken')?.value || '').trim(),
+        tabModelId: ($('tabModelId')?.value || '').trim(),
+        tabAddress: ($('tabAddress')?.value || '').trim()
       };
       const result = await api('/api/settings', {method: 'POST', body});
       fillSettings(result.settings);
-      $('tabSettingsHint').textContent = '✅ Tab 代码补全设置已保存并实时生效';
-      loadStatus({quiet: true});
+      if ($('tabSettingsHint')) $('tabSettingsHint').textContent = '✅ Tab 代码补全设置已保存并实时生效';
+      notice('✅ Tab 代码智能补全设置已保存并实时生效', 'ok');
+      await loadStatus({quiet: true});
     } catch (error) {
-      $('tabSettingsHint').textContent = `❌ 保存失败：${error.message}`;
+      if ($('tabSettingsHint')) $('tabSettingsHint').textContent = `❌ 保存失败：${error.message}`;
+      notice(`保存 Tab 设置失败：${error.message}`, 'error');
     } finally {
-      btn.disabled = false;
-      btn.textContent = '保存 Tab 设置';
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '保存 Tab 设置';
+      }
     }
   }
 
@@ -420,15 +426,15 @@
   }
 
   async function saveSettings(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
     const beforeMode = lastOverview?.settings?.values?.runMode;
     const beforeSubagentMode = lastOverview?.settings?.values?.subagentMode;
     const body = {
-      runMode: $('runMode').value,
-      subagentMode: $('subagentMode').value,
-      refreshSeconds: Number($('refreshSeconds').value),
-      gatewayGraceSeconds: Number($('gatewayGraceSeconds').value),
-      logLimitMB: Number($('logLimitMB').value)
+      runMode: $('runMode')?.value || 'default',
+      subagentMode: $('subagentMode')?.value || 'async',
+      refreshSeconds: Number($('refreshSeconds')?.value || 3),
+      gatewayGraceSeconds: Number($('gatewayGraceSeconds')?.value || 60),
+      logLimitMB: Number($('logLimitMB')?.value || 4)
     };
     try {
       const result = await api('/api/settings', {method: 'POST', body});
@@ -440,8 +446,14 @@
       const subagentHint = beforeSubagentMode && beforeSubagentMode !== result.settings.subagentMode
         ? '子代理模式已变更，引擎将在数秒内自动重启，下一次 Task 调用生效；'
         : '';
-      $('settingsHint').textContent = `已保存：${modeHint}${subagentHint}同步间隔与容错下一轮生效，日志上限下次后台启动生效`;
-      loadStatus({quiet: true});
+      if ($('settingsHint')) $('settingsHint').textContent = `已保存：${modeHint}${subagentHint}同步间隔与容错下一轮生效，日志上限下次后台启动生效`;
+      notice('✅ 参数配置已保存', 'ok');
+      await loadStatus({quiet: true});
+    } catch (error) {
+      if ($('settingsHint')) $('settingsHint').textContent = `保存失败：${error.message}`;
+      notice(`保存参数失败：${error.message}`, 'error');
+    }
+  }
     } catch (error) {
       $('settingsHint').textContent = `保存失败：${error.message}`;
     }
@@ -696,7 +708,8 @@
       $('dbConfirmHint').textContent = '';
       updateDbControls();
     });
-    $('settingsForm').addEventListener('submit', saveSettings);
+    if ($('saveSettings')) $('saveSettings').addEventListener('click', saveSettings);
+    if ($('settingsForm')) $('settingsForm').addEventListener('submit', saveSettings);
     $('resetSettings').addEventListener('click', () => {
       const defaults = lastOverview?.settings?.defaults || {runMode: 'default', subagentMode: 'async', refreshSeconds: 15, gatewayGraceSeconds: 60, logLimitMB: 4};
       fillSettings(defaults);
@@ -706,6 +719,7 @@
     // 绑定 Tab 补全专属卡片交互
     if ($('tabMode')) $('tabMode').addEventListener('change', updateTabModeVisibility);
     if ($('extractTokenBtn')) $('extractTokenBtn').addEventListener('click', extractCursorToken);
+    if ($('saveTabSettings')) $('saveTabSettings').addEventListener('click', saveTabSettings);
     if ($('tabSettingsForm')) $('tabSettingsForm').addEventListener('submit', saveTabSettings);
     const btnMigrate = $('btnMigrateStorage');
     if (btnMigrate) {
