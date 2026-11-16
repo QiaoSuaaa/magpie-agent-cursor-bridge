@@ -781,7 +781,10 @@ export function createControlServer({repoRoot, port, log = console.log}) {
           if (['config', 'data', 'install', 'repo'].includes(String(body.target || ''))) {
             try { fs.mkdirSync(target, { recursive: true }); } catch {}
           } else {
-            return sendJson(res, 404, {ok: false, error: `路径不存在：${target}`});
+            // 若日志文件不存在，先创建空文件再打开，防止报红“路径不存在”
+            try { fs.writeFileSync(target, ''); } catch {
+              return sendJson(res, 404, {ok: false, error: `路径不存在：${target}`});
+            }
           }
         }
         const result = await run(opener.command, opener.args, {timeout: 10000});

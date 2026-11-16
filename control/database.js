@@ -179,18 +179,20 @@ async function bunSqlite(dbPath, sql, {readonly = false, json = false, busyTimeo
   }
 }
 
-function sqlite(dbPath, sql, {readonly = false, json = false, timeout = QUERY_TIMEOUT, busyTimeout = 0} = {}) {
+/// 执行 SQLite 查询：Magpie 环境下优先使用内置高性能 bun:sqlite，避免外部子进程卡死与锁冲突
+function sqlite(dbPath, sql, {readonly = false, json = false, timeout = QUERY_TIMEOUT, busyTimeout = 10000} = {}) {
+  if (process.versions?.bun) {
+    return bunSqlite(dbPath, sql, {readonly, json, busyTimeout: busyTimeout || 10000});
+  }
   const binary = platform.current.sqlite3();
   if (!binary) {
-    if (process.versions.bun) return bunSqlite(dbPath, sql, {readonly, json, busyTimeout});
-    return Promise.reject(new Error('未找到 sqlite3 可执行文件；请安装 sqlite3 后重试（Magpie 内置运行时下会自动使用内置 SQLite）'));
+    return Promise.reject(new Error('未找到 sqlite3 可执行文件；请安装 sqlite3 后重试'));
   }
   const args = [];
   if (readonly) args.push('-readonly');
   if (json) args.push('-json');
-  // A .timeout dot-command emits no rows; PRAGMA busy_timeout would add a
-  // JSON array of its own and break the single-result convention below.
-  if (busyTimeout) args.push('-cmd', `.timeout ${busyTimeout}`);
+  const timeoutMs = busyTimeout || 10000;
+  args.push('-cmd', `.timeout ${timeoutMs}`);
   args.push('-batch', dbPath, sql);
   return new Promise((resolve, reject) => {
     execFile(binary, args, {encoding: 'utf8', timeout, maxBuffer: 16 * 1024 * 1024, windowsHide: true}, (error, stdout, stderr) => {
@@ -437,11 +439,10 @@ export async function readDatabase(dbPath, {deep = false} = {}) {
   // messages can replace both the table totals and the two report queries.
   const columns = await tableColumns(dbPath);
   const grouped = canGroupMessages(tables, columns);
-  const [page, messages, stats] = await Promise.all([
-    pageInfo(dbPath),
-    messageGroups(dbPath, tables, columns),
-    tableStats(dbPath, grouped ? tables.filter((name) => name !== 'messages') : tables, columns, {deep})
-  ]);
+  /// 顺序执行统计查询，避免在大型 SQLite 库上并发产生读锁竞争
+  const page = await pageInfo(dbPath);
+  const messages = await messageGroups(dbPath, tables, columns);
+  const stats = await tableStats(dbPath, grouped ? tables.filter((name) => name !== 'messages') : tables, columns, {deep});
   const entries = stats.slice();
   if (grouped && messages.totals) {
     entries.push({name: 'messages', rows: messages.totals.rows, bytes: messages.totals.bytes, measured: true});
