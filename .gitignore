@@ -1,0 +1,14 @@
+# Runtime data and state
+data/
+*.db
+*.db-wal
+*.db-shm
+status.json
+effective.json
+connection.json
+settings-journal.json
+engine.log*
+*.lock/
+node_modules/
+.DS_Store
+Thumbs.db
