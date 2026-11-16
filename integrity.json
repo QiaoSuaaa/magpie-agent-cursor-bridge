@@ -1,9 +1,9 @@
 {
-  "version": "0.2.17",
-  "engineVersion": "0.2.17",
+  "version": "0.2.18",
+  "engineVersion": "0.2.18",
   "engine": "c021fa6cfc4a01fc8567597bbd8ec096a4eb2261e5173e2f3875ea89faf2d6fc",
   "platforms": {
     "darwin-arm64": "c021fa6cfc4a01fc8567597bbd8ec096a4eb2261e5173e2f3875ea89faf2d6fc",
-    "win32-x64": "4cdb65a59b22a5b61ac5bf8bb62044ed0b440b4227d15dafc9223b52e1d44baf"
+    "win32-x64": "fb311379b1229607c6716c8eec905ce025be9208bc18b0162b0eaf855e2eaba6"
   }
 }
