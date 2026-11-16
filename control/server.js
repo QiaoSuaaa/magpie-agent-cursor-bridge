@@ -465,8 +465,26 @@ function readBody(req) {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+/// 获取或持久化稳定的本地控制口令，防止后台服务重启导致已打开的前端面板因 Token 不一致而失效
+function resolveControlToken(repoRoot) {
+  const p = paths(repoRoot);
+  const tokenFile = path.join(p.root, 'control-token.txt');
+  try {
+    if (fs.existsSync(tokenFile)) {
+      const existing = fs.readFileSync(tokenFile, 'utf8').trim();
+      if (existing && existing.length === 64) return existing;
+    }
+  } catch {}
+  const created = randomBytes(32).toString('hex');
+  try {
+    fs.mkdirSync(p.root, {recursive: true, mode: 0o700});
+    fs.writeFileSync(tokenFile, created, {mode: 0o600});
+  } catch {}
+  return created;
+}
+
 export function createControlServer({repoRoot, port, log = console.log}) {
-  const token = randomBytes(32).toString('hex');
+  const token = resolveControlToken(repoRoot);
   const htmlFile = path.join(here, 'ui.html');
   const readAsset = (name, type) => {
     const file = path.join(here, name);

@@ -58,34 +58,62 @@
   const RELOAD_MARK = 'bridge-token-reload-at';
   const RELOAD_COOLDOWN = 15000;
 
-  function reloadForStaleToken() {
-    const now = Date.now();
-    let last = 0;
-    try { last = Number(sessionStorage.getItem(RELOAD_MARK)) || 0; } catch { /* storage is optional */ }
-    if (now - last < RELOAD_COOLDOWN) return false;
-    try { sessionStorage.setItem(RELOAD_MARK, String(now)); } catch { /* storage is optional */ }
-    location.reload();
-    return true;
+  let isRefreshingToken = null;
+  /// 静默从同源页面拉取最新的生效 Token，杜绝服务重启后旧 Token 导致的通信中断
+  async function fetchLatestToken() {
+    if (isRefreshingToken) return isRefreshingToken;
+    isRefreshingToken = (async () => {
+      try {
+        const res = await fetch(`/?_t=${Date.now()}`, {cache: 'no-store'});
+        if (res.ok) {
+          const text = await res.text();
+          const match = /window\.__BRIDGE_TOKEN__="([^"]+)"/.exec(text);
+          if (match && match[1]) {
+            TOKEN = match[1];
+            return match[1];
+          }
+        }
+      } catch {}
+      return null;
+    })().finally(() => {
+      isRefreshingToken = null;
+    });
+    return isRefreshingToken;
   }
 
-  async function api(pathname, {method = 'GET', body} = {}) {
-    const response = await fetch(pathname, {
-      method,
-      headers: {'content-type': 'application/json', [tokenHeader]: TOKEN},
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: 'no-store'
-    });
+  async function api(pathname, {method = 'GET', body, retried = false} = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    let response = null;
+    try {
+      response = await fetch(pathname, {
+        method,
+        headers: {'content-type': 'application/json', [tokenHeader]: TOKEN},
+        body: body === undefined ? undefined : JSON.stringify(body),
+        cache: 'no-store',
+        signal: controller.signal
+      });
+    } catch (netErr) {
+      clearTimeout(timer);
+      const isAbort = netErr.name === 'AbortError';
+      throw new Error(isAbort ? '请求超时，请检查控制服务是否响应' : `网络连接失败：${netErr.message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
     let data = null;
     try { data = await response.json(); } catch {}
     if (!response.ok || !data || data.ok === false) {
       const stale = response.status === 403 && data?.error === '控制口令无效';
-      if (stale && reloadForStaleToken()) {
-        // The page is about to be replaced; hold the caller instead of
-        // flashing a failure the user cannot act on.
-        return new Promise(() => {});
+      // 若检测到 Token 失效且未重试过，立即静默自动拉取最新 Token 并无缝重新发起请求！
+      if (stale && !retried) {
+        const fresh = await fetchLatestToken();
+        if (fresh) {
+          return api(pathname, {method, body, retried: true});
+        }
       }
       const error = new Error(stale
-        ? '控制口令已过期：请点击「刷新页面」重新加载控制台'
+        ? '控制口令已更新，请点击右上角「刷新页面」重新载入'
         : (data?.error || `HTTP ${response.status}`));
       error.stale = stale;
       throw error;
