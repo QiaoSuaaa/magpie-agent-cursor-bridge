@@ -244,9 +244,9 @@ async function overview(repoRoot, port) {
   const installation = readJson(p.installation);
   const runtime = readJson(p.status);
   const supervisorPid = readPid(p.supervisorPid);
-  const supervisorCommand = supervisorPid ? await commandOf(supervisorPid) : '';
+  const supervisorAlive = !!supervisorPid && alive(supervisorPid);
   const enginePid = Number(runtime?.pid) || null;
-  const engineCommand = enginePid ? await commandOf(enginePid) : '';
+  const engineAlive = !!enginePid && alive(enginePid);
   const agent = await launchAgentState(repoRoot);
   const connection = safeConnection(repoRoot);
   return {
@@ -271,13 +271,13 @@ async function overview(repoRoot, port) {
     } : null,
     supervisor: {
       pid: supervisorPid,
-      alive: !!supervisorPid && alive(supervisorPid),
-      expected: supervisorCommand.includes('bridge.js') && supervisorCommand.includes('supervise')
+      alive: supervisorAlive,
+      expected: supervisorAlive
     },
     engine: {
       pid: enginePid,
-      alive: !!enginePid && alive(enginePid),
-      expected: engineCommand.includes('cursor-magpie-bridge')
+      alive: engineAlive,
+      expected: engineAlive
     },
     launchAgent: agent,
     platform: platform.platform,
