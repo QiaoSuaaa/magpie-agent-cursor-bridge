@@ -27,6 +27,7 @@
     <button id="start" class="primary" type="button">启动</button>
     <button id="status" type="button">状态</button>
     <button id="restart" class="danger" type="button">重启</button>
+    <button id="syncModels" class="ghost" type="button" title="立即从 Magpie 网关同步模型目录并热重载到 Cursor">同步模型</button>
     <span id="busy" class="busy" hidden>执行中，请稍候…</span>
     <button id="back" class="ghost right" type="button" title="回到 Magpie 面板修改控制端口">端口设置</button>
   </section>
@@ -47,7 +48,7 @@
         <option value="async">异步后台（默认）</option>
         <option value="sync">同步阻塞</option>
       </select></span></label>
-      <label><span class="label">模型目录同步间隔</span><span class="field"><input id="refreshSeconds" type="number" min="5" max="300" step="1" inputmode="numeric"><span class="unit">秒</span></span></label>
+      <label><span class="label">模型目录同步间隔</span><span class="field"><input id="refreshSeconds" type="number" min="1" max="300" step="1" inputmode="numeric"><span class="unit">秒</span></span></label>
       <label><span class="label">网关断线容错</span><span class="field"><input id="gatewayGraceSeconds" type="number" min="10" max="600" step="1" inputmode="numeric"><span class="unit">秒</span></span></label>
       <label><span class="label">引擎日志上限</span><span class="field"><input id="logLimitMB" type="number" min="1" max="64" step="1" inputmode="numeric"><span class="unit">MB</span></span></label>
       <div class="form-actions">

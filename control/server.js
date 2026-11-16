@@ -7,6 +7,8 @@ import {randomBytes, timingSafeEqual} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {read as readBridgeSettings, write as writeBridgeSettings, defaults as bridgeDefaults, rules as bridgeRules, modes as bridgeModes, subagentModes as bridgeSubagentModes, settingsFile} from '../lib/bridge-settings.js';
 import {readDatabase, cleanDatabase} from './database.js';
+import {validate, gatewayModels} from '../lib/config.js';
+import {atomic} from '../lib/settings.js';
 import platform from '../lib/platform.js';
 
 // The control console is served from the Magpie plugin host. It runs the
@@ -96,6 +98,7 @@ export function paths(repoRoot) {
     plist: layout.plist,
     autostart: layout.autostart || null,
     status: path.join(root, 'status.json'),
+    effective: path.join(root, 'effective.json'),
     installation: path.join(root, 'installation.json'),
     connection: connections[0],
     connections,
@@ -695,6 +698,37 @@ export function createControlServer({repoRoot, port, log = console.log}) {
           return sendJson(res, 500, { ok: false, error: `迁移失败: ${error.message}` });
         } finally {
           busy = null;
+        }
+      }
+
+      /// 立即从 Magpie 网关同步最新开启/关闭的模型并热更新生效配置
+      if (req.method === 'POST' && url.pathname === '/api/models/sync') {
+        const p = paths(repoRoot);
+        let raw = null;
+        for (const candidate of p.connections) {
+          try {
+            if (fs.existsSync(candidate)) {
+              raw = fs.readFileSync(candidate, 'utf8');
+              if (raw && raw.trim() !== '{}') break;
+            }
+          } catch {}
+        }
+        if (!raw || raw.trim() === '{}') {
+          return sendJson(res, 400, { ok: false, error: '未找到 Magpie 连接配置，请先在 Magpie 的 Agents 菜单中连接 Cursor · Magpie Bridge' });
+        }
+        try {
+          const c = validate(JSON.parse(raw));
+          if (!c) return sendJson(res, 400, { ok: false, error: '当前连接配置格式无效' });
+          const effective = await gatewayModels(c);
+          atomic(p.effective, JSON.stringify(effective, null, 2));
+          overviewCache = { at: 0, data: null, pending: null };
+          return sendJson(res, 200, {
+            ok: true,
+            count: effective.models.length,
+            models: effective.models.map(m => m.name || m.id)
+          });
+        } catch (err) {
+          return sendJson(res, 500, { ok: false, error: `同步 Magpie 模型目录失败: ${err.message}` });
         }
       }
 

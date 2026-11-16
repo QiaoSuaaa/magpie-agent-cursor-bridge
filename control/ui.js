@@ -551,6 +551,27 @@
     for (const [id, action] of [['start', 'start'], ['status', 'status'], ['restart', 'restart']]) {
       $(id).addEventListener('click', () => runAction(action));
     }
+    /// 绑定同步模型按钮点击事件
+    $('syncModels').addEventListener('click', async () => {
+      if (busy) return;
+      busy = '同步模型';
+      setBusy(true);
+      notice('正在从 Magpie 网关同步模型列表…', 'info');
+      try {
+        const res = await api('/api/models/sync', {method: 'POST'});
+        if (res.ok) {
+          notice(`已成功同步 ${res.count} 个模型至 Cursor 桥接：${res.models.join('、')}`, 'success');
+          loadStatus();
+        } else {
+          notice(res.error || '同步模型失败', 'error');
+        }
+      } catch (err) {
+        notice(`同步模型失败：${err.message}`, 'error');
+      } finally {
+        busy = null;
+        setBusy(false);
+      }
+    });
     $('refresh').addEventListener('click', () => loadStatus());
     $('reload').addEventListener('click', () => location.reload());
     $('dbCard').addEventListener('toggle', () => {
