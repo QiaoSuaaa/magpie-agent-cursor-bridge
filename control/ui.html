@@ -138,6 +138,30 @@
   </details>
 
   <section class="card">
+    <div class="card-head">
+      <h2>数据存储与迁移</h2>
+      <span class="hint">绿色便携存储，支持随意迁移或绑定已有数据库（如 E 盘）</span>
+    </div>
+    <div class="cleanup-row" style="margin-top: 10px;">
+      <div class="cleanup-copy">
+        <strong>当前生效数据目录</strong>
+        <span class="hint" id="currentDataDirDisplay" style="user-select: all; font-family: monospace;">读取中...</span>
+      </div>
+      <button type="button" data-target="data">打开数据目录</button>
+    </div>
+    <div class="cleanup-row">
+      <div class="cleanup-copy">
+        <strong>迁移 / 更换数据目录</strong>
+        <span class="hint">输入目标路径（如 <code>E:\curosrbyokdb</code>），若目标目录为空则自动复制当前数据，若已有数据库则直接绑定生效。</span>
+      </div>
+      <div class="cleanup-controls" style="display: flex; gap: 8px; align-items: center;">
+        <input id="targetStorageDir" type="text" placeholder="例如 E:\curosrbyokdb" style="padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); min-width: 260px; font-family: monospace;" spellcheck="false">
+        <button id="btnMigrateStorage" type="button">迁移 / 切换</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
     <div class="card-head"><h2>快捷入口</h2><span class="hint">在本机打开</span></div>
     <div class="links">
       <button type="button" data-target="config">配置目录</button>

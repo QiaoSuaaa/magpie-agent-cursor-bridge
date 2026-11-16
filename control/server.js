@@ -24,6 +24,55 @@ const LABEL = 'local.magpie.cursor-bridge';
 const MAX_BODY = 16 * 1024;
 const ACTION_TIMEOUT = 180000;
 
+function resolveDataDir(root, home) {
+  if (process.env.CURSOR_BYOK_DATA_DIR && process.env.CURSOR_BYOK_DATA_DIR.trim()) {
+    return process.env.CURSOR_BYOK_DATA_DIR.trim();
+  }
+  if (process.env.CURSOR_DATA_DIR && process.env.CURSOR_DATA_DIR.trim()) {
+    return process.env.CURSOR_DATA_DIR.trim();
+  }
+  // 1. 检查插件 config 目录下的 data_location.txt
+  const pointerFile = path.join(root, 'data_location.txt');
+  try {
+    if (fs.existsSync(pointerFile)) {
+      const target = fs.readFileSync(pointerFile, 'utf8').trim();
+      if (target && fs.existsSync(target)) return target;
+    }
+  } catch {}
+  // 2. 检查 Cursor BYOK 默认主目录下的 data_location.txt（自动继承用户原本在 E 盘等设置的重定向指针！）
+  const byokPointer = path.join(home || os.homedir(), '.cursor-byok-v3', 'data_location.txt');
+  try {
+    if (fs.existsSync(byokPointer)) {
+      const target = fs.readFileSync(byokPointer, 'utf8').trim();
+      if (target && fs.existsSync(target)) return target;
+    }
+  } catch {}
+  return path.join(root, 'data');
+}
+
+function resolveDatabaseFile(dataDir) {
+  const bridgeDb = path.join(dataDir, 'bridge.db');
+  const byokDb = path.join(dataDir, 'cursor-byok.db');
+  if (fs.existsSync(bridgeDb)) return bridgeDb;
+  if (fs.existsSync(byokDb)) return byokDb;
+  return bridgeDb;
+}
+
+function copyDirRecursiveSync(src, dest) {
+  fs.mkdirSync(dest, { recursive: true, mode: 0o700 });
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === 'data_location.txt' || entry.name.endsWith('-shm')) continue;
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirRecursiveSync(srcPath, destPath);
+    } else if (entry.isFile()) {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
 export function paths(repoRoot) {
   // CURSOR_BRIDGE_HOME keeps tests (and a portable copy) away from the real
   // ~/.config; the normal path is always the user's home.
@@ -31,6 +80,8 @@ export function paths(repoRoot) {
   const layout = platform.pathsFor(home);
   const root = layout.config;
   const share = layout.share;
+  const dataDir = resolveDataDir(root, home);
+  const dbFile = resolveDatabaseFile(dataDir);
   // Magpie may write the agent connection to a different file on Windows;
   // `connections` lists the same candidates the supervisor reads.
   const connections = platform.current.connectionFiles(home);
@@ -38,10 +89,10 @@ export function paths(repoRoot) {
     home,
     root,
     share,
-    data: path.join(root, 'data'),
-    database: path.join(root, 'data/bridge.db'),
-    databaseWal: path.join(root, 'data/bridge.db-wal'),
-    databaseShm: path.join(root, 'data/bridge.db-shm'),
+    data: dataDir,
+    database: dbFile,
+    databaseWal: `${dbFile}-wal`,
+    databaseShm: `${dbFile}-shm`,
     plist: layout.plist,
     autostart: layout.autostart || null,
     status: path.join(root, 'status.json'),
@@ -214,6 +265,8 @@ async function overview(repoRoot, port) {
     paths: {
       configDir: p.root,
       installDir: p.share,
+      dataDir: p.data,
+      databaseFile: p.database,
       plist: p.plist,
       repo: p.repo,
       setup: p.setup
@@ -594,6 +647,57 @@ export function createControlServer({repoRoot, port, log = console.log}) {
         }
       }
 
+      if (req.method === 'POST' && url.pathname === '/api/storage/migrate') {
+        const body = await readBody(req);
+        const targetDir = String(body.targetDir || '').trim();
+        if (!targetDir) {
+          return sendJson(res, 400, { ok: false, error: '目标目录不能为空' });
+        }
+        const resolvedTarget = path.resolve(targetDir);
+        const p = paths(repoRoot);
+        const currentDataDir = p.data;
+        if (path.resolve(currentDataDir) === resolvedTarget) {
+          return sendJson(res, 400, { ok: false, error: '目标目录与当前生效目录相同' });
+        }
+        if (busy) return sendJson(res, 409, { ok: false, error: `正在执行「${busy}」，请稍候` });
+        busy = '数据迁移';
+        log(`storage migrate: ${currentDataDir} -> ${resolvedTarget}`);
+        try {
+          const runtime = readJson(p.status);
+          const enginePid = Number(runtime?.pid) || null;
+          const supervisorPid = readPid(p.supervisorPid);
+          const wasRunning = (!!enginePid && alive(enginePid)) || (!!supervisorPid && alive(supervisorPid));
+          if (wasRunning) await stopBridge(repoRoot);
+
+          fs.mkdirSync(resolvedTarget, { recursive: true });
+          const currentDb = p.database;
+          const targetBridgeDb = path.join(resolvedTarget, 'bridge.db');
+          const targetByokDb = path.join(resolvedTarget, 'cursor-byok.db');
+          if (fs.existsSync(currentDb) && !fs.existsSync(targetBridgeDb) && !fs.existsSync(targetByokDb)) {
+            copyDirRecursiveSync(currentDataDir, resolvedTarget);
+          }
+
+          fs.writeFileSync(path.join(p.root, 'data_location.txt'), resolvedTarget);
+          const byokDir = path.join(p.home, '.cursor-byok-v3');
+          try {
+            fs.mkdirSync(byokDir, { recursive: true });
+            fs.writeFileSync(path.join(byokDir, 'data_location.txt'), resolvedTarget);
+          } catch {}
+
+          let restart = null;
+          if (wasRunning) {
+            try { restart = await runSetup(repoRoot); } catch (e) { restart = { ok: false, error: String(e.message || e) }; }
+          }
+          overviewCache = { at: 0, data: null, pending: null };
+          databaseCache = { at: 0, data: null, deep: false };
+          return sendJson(res, 200, { ok: true, targetDir: resolvedTarget, restart });
+        } catch (error) {
+          return sendJson(res, 500, { ok: false, error: `迁移失败: ${error.message}` });
+        } finally {
+          busy = null;
+        }
+      }
+
       if (req.method === 'POST' && url.pathname === '/api/action') {
         const body = await readBody(req);
         const action = String(body.action || '');
@@ -639,7 +743,13 @@ export function createControlServer({repoRoot, port, log = console.log}) {
         if (!target) return sendJson(res, 400, {ok: false, error: '未知的打开目标'});
         const opener = platform.current.openCommand(target);
         if (!opener) return sendJson(res, 400, {ok: false, error: `当前平台（${platform.platform}）没有可用的打开命令`});
-        if (!fs.existsSync(target)) return sendJson(res, 404, {ok: false, error: `路径不存在：${target}`});
+        if (!fs.existsSync(target)) {
+          if (['config', 'data', 'install', 'repo'].includes(String(body.target || ''))) {
+            try { fs.mkdirSync(target, { recursive: true }); } catch {}
+          } else {
+            return sendJson(res, 404, {ok: false, error: `路径不存在：${target}`});
+          }
+        }
         const result = await run(opener.command, opener.args, {timeout: 10000});
         // explorer.exe exits 1 even when it opened the folder.
         const opened = result.ok || (platform.IS_WIN && result.code === 1);

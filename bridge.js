@@ -14,6 +14,19 @@ const version=JSON.parse(fs.readFileSync(path.join(packageDir,'package.json'),'u
 const root=process.env.CURSOR_BRIDGE_ROOT||platform.current.paths().config;
 const settings=process.env.CURSOR_BRIDGE_SETTINGS||platform.current.cursorSettings();
 const file=name=>path.join(root,name);
+function resolveDataDir() {
+  if (process.env.CURSOR_BYOK_DATA_DIR && process.env.CURSOR_BYOK_DATA_DIR.trim()) {
+    return process.env.CURSOR_BYOK_DATA_DIR.trim();
+  }
+  const pointerFile = file('data_location.txt');
+  try {
+    if (fs.existsSync(pointerFile)) {
+      const target = fs.readFileSync(pointerFile, 'utf8').trim();
+      if (target) return target;
+    }
+  } catch {}
+  return file('data');
+}
 let lastStatus='';
 const status=(state,extra={})=>{const signature=JSON.stringify({version,state,...extra});if(signature!==lastStatus){atomic(file('status.json'),JSON.stringify({version,state,...extra,updated:new Date().toISOString()},null,2));lastStatus=signature;}};
 const read=name=>JSON.parse(fs.readFileSync(file(name),'utf8'));
@@ -115,8 +128,9 @@ if(command==='status') {
     const serialized=JSON.stringify(c);
     atomic(file('effective.json'),serialized);
     lastEffective=serialized;
+    const actualDataDir = resolveDataDir();
     const engine=spawn(platform.enginePathFor(packageDir),[file('effective.json')],{
-      env:{...process.env,CURSOR_BYOK_DATA_DIR:file('data'),CURSOR_BRIDGE_RUN_MODE:mode,CURSOR_BRIDGE_SUBAGENT_MODE:subagentMode,...(preferredProxyPort?{CURSOR_BRIDGE_PROXY_PORT:preferredProxyPort}:{})},stdio:['pipe','pipe','pipe'],windowsHide:true
+      env:{...process.env,CURSOR_BYOK_DATA_DIR:actualDataDir,CURSOR_BRIDGE_RUN_MODE:mode,CURSOR_BRIDGE_SUBAGENT_MODE:subagentMode,...(preferredProxyPort?{CURSOR_BRIDGE_PROXY_PORT:preferredProxyPort}:{})},stdio:['pipe','pipe','pipe'],windowsHide:true
     });
     runningMode=mode;runningSubagentMode=subagentMode;
     child=engine;

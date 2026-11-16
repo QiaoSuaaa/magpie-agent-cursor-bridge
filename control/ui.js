@@ -245,6 +245,10 @@
       item('控制服务', `PID ${overview.control.pid} · ${overview.control.uptime}s`, {mono: true})
     );
 
+    if ($('currentDataDirDisplay')) {
+      $('currentDataDirDisplay').textContent = overview.paths?.dataDir || '默认目录';
+    }
+
     if (!settingsFilled && overview.settings?.values) {
       fillSettings(overview.settings.values);
       settingsFilled = true;
@@ -574,6 +578,38 @@
       fillSettings(defaults);
       $('settingsHint').textContent = '已填入默认值，点击「保存」后生效';
     });
+    const btnMigrate = $('btnMigrateStorage');
+    if (btnMigrate) {
+      btnMigrate.addEventListener('click', async () => {
+        const input = $('targetStorageDir');
+        const targetDir = (input?.value || '').trim();
+        if (!targetDir) {
+          alert('请输入目标数据目录路径（例如 E:\\curosrbyokdb）');
+          return;
+        }
+        if (!confirm(`确定将数据目录切换/迁移到：\n${targetDir}\n\n若目录已有数据库将直接绑定，若为空将自动复制现有数据并重启服务。`)) return;
+        btnMigrate.disabled = true;
+        btnMigrate.textContent = '处理中...';
+        try {
+          const res = await api('/api/storage/migrate', {
+            method: 'POST',
+            body: { targetDir }
+          });
+          if (res.ok) {
+            alert('数据目录切换/迁移成功！已绑定至：' + res.targetDir);
+            input.value = '';
+            await loadStatus();
+          } else {
+            alert('操作失败：' + (res.error || '未知错误'));
+          }
+        } catch (e) {
+          alert('操作异常：' + e.message);
+        } finally {
+          btnMigrate.disabled = false;
+          btnMigrate.textContent = '迁移 / 切换';
+        }
+      });
+    }
     for (const button of document.querySelectorAll('[data-target]')) {
       button.addEventListener('click', async () => {
         try {
