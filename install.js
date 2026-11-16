@@ -27,7 +27,21 @@ try {
     fs.mkdirSync(p.root,{recursive:true,mode:0o700});fs.chmodSync(p.root,0o700);
     // One installer owns both certificate initialization and service activation.
     const lock=path.join(p.root,'installer.lock');
-    try {fs.mkdirSync(lock);} catch {throw new Error('另一个安装程序正在运行；若上次被强制终止，请检查后移除 installer.lock 再重试');}
+    try {
+      fs.mkdirSync(lock);
+    } catch {
+      let stale = false;
+      try {
+        const stat = fs.statSync(lock);
+        if (Date.now() - stat.mtimeMs > 15000) stale = true;
+      } catch {}
+      if (stale) {
+        try { fs.rmSync(lock, { recursive: true, force: true }); fs.mkdirSync(lock); }
+        catch { throw new Error('另一个安装程序正在运行；若上次被强制终止，请检查后移除 installer.lock 再重试'); }
+      } else {
+        throw new Error('另一个安装程序正在运行；若上次被强制终止，请检查后移除 installer.lock 再重试');
+      }
+    }
     try {
       if(command==='uninstall') {
         if(magpieReady) run(magpie,['cursor-bridge','default'],{optional:true});
@@ -89,6 +103,6 @@ try {
         atomic(path.join(p.root,'installation.json'),JSON.stringify({version:manifest.version,release,source,installed:new Date().toISOString()},null,2));
         console.log(`已安装 v${manifest.version}。在 Magpie → Agents 选择 Cursor · Magpie Bridge 和模型；首次连接后重启 Cursor。`);
       }
-    } finally {fs.rmdirSync(lock);}
+    } finally {try { fs.rmSync(lock, { recursive: true, force: true }); } catch {} }
   }
 } catch(error) {console.error(error.message);process.exitCode=1;}
