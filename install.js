@@ -101,7 +101,7 @@ try {
         // disk. Other platforms keep their historical layout.
         if(platform.IS_WIN) pruneReleases(p,release);
         atomic(path.join(p.root,'installation.json'),JSON.stringify({version:manifest.version,release,source,installed:new Date().toISOString()},null,2));
-        console.log(`已安装 v${manifest.version}。在 Magpie → Agents 选择 Cursor · Magpie Bridge 和模型；首次连接后重启 Cursor。`);
+        console.log(`已安装 v${manifest.version}。在 Magpie → Agents 启用并选择模型；日常使用与切换模型无需重启 Cursor（若首次配置代理未生效，在 Cursor 按 Ctrl+Shift+P 执行「Reload Window 重载窗口」即可）。`);
       }
     } finally {try { fs.rmSync(lock, { recursive: true, force: true }); } catch {} }
   }
