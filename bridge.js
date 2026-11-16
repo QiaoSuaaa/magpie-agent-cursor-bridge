@@ -125,7 +125,17 @@ if(command==='status') {
     }
   }
   async function start(c,mode,subagentMode) {
-    const serialized=JSON.stringify(c);
+    const payload = {...c};
+    try {
+      const cfg = readBridgeSettings(root);
+      payload.tab = {
+        mode: cfg.tabMode || 'official',
+        token: cfg.tabToken || '',
+        model_id: cfg.tabModelId || '',
+        address: cfg.tabAddress || ''
+      };
+    } catch {}
+    const serialized=JSON.stringify(payload);
     atomic(file('effective.json'),serialized);
     lastEffective=serialized;
     const actualDataDir = resolveDataDir();
@@ -182,6 +192,12 @@ if(command==='status') {
             if(!engineAlive || modeChanged || subagentModeChanged) {
               await stop();await start(effective,cfg.runMode,cfg.subagentMode);
             } else {
+              effective.tab = {
+                mode: cfg.tabMode || 'official',
+                token: cfg.tabToken || '',
+                model_id: cfg.tabModelId || '',
+                address: cfg.tabAddress || ''
+              };
               const serialized=JSON.stringify(effective);
               if(serialized!==lastEffective) {atomic(file('effective.json'),serialized);lastEffective=serialized;}
             }

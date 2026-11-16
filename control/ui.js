@@ -13,6 +13,13 @@
     stopped: {label: '已停止', kind: 'idle'}
   };
   const MODES = {default: '默认模式', lite: '轻量模式'};
+  const TAB_MODES = {
+    official: '官方 Token 极速',
+    model: 'Magpie 模型',
+    direct: '直连官方',
+    custom: '自定义服务',
+    public: '公共服务'
+  };
 
   let busy = null;
   let serviceSupported = true;
@@ -239,6 +246,7 @@
       item('后端端口', runtime?.backend || '—', {mono: true}),
       item('当前模型', model || '—'),
       item('模型数', models ? String(models) : '—'),
+      item('Tab 补全', TAB_MODES[overview.settings?.values?.tabMode || 'official'] || '官方极速模式', {tone: 'ok'}),
       item('状态更新', timeText(runtime?.updated)),
       item('安装时间', timeText(overview.installation?.installed)),
       item('release', overview.installation?.release ? shorten(overview.installation.release) : '—', {mono: true, title: overview.installation?.release || ''}),
@@ -253,13 +261,93 @@
       fillSettings(overview.settings.values);
       settingsFilled = true;
     }
+
+    // 动态填充 Tab 补全模型下拉候选列表
+    if ($('tabModelId') && (overview.connection?.model || runtime?.model)) {
+      const activeModel = runtime?.model || overview.connection?.model || '';
+      const currentVal = $('tabModelId').value;
+      if (!$('tabModelId').dataset.filled) {
+        const options = [`<option value="">跟随默认代码模型 (${activeModel})</option>`];
+        if (activeModel) {
+          options.push(`<option value="${activeModel}">${activeModel}</option>`);
+        }
+        $('tabModelId').innerHTML = options.join('');
+        if (currentVal) $('tabModelId').value = currentVal;
+        $('tabModelId').dataset.filled = 'true';
+      }
+    }
   }
 
+  /// 依据当前选中的 Tab 补全模式动态切换界面配置表单行的可见性
+  function updateTabModeVisibility() {
+    const mode = $('tabMode')?.value || 'official';
+    if ($('tabOfficialRow')) $('tabOfficialRow').hidden = mode !== 'official' && mode !== 'model';
+    if ($('tabModelRow')) $('tabModelRow').hidden = mode !== 'model';
+    if ($('tabAddressRow')) $('tabAddressRow').hidden = mode !== 'custom';
+  }
+
+  /// 填充参数设置表单，包括常规参数与 Tab 补全参数
   function fillSettings(values) {
-    if (values?.runMode !== undefined) $('runMode').value = values.runMode;
-    if (values?.subagentMode !== undefined) $('subagentMode').value = values.subagentMode;
+    if (values?.runMode !== undefined && $('runMode')) $('runMode').value = values.runMode;
+    if (values?.subagentMode !== undefined && $('subagentMode')) $('subagentMode').value = values.subagentMode;
     for (const key of ['refreshSeconds', 'gatewayGraceSeconds', 'logLimitMB']) {
-      if (values?.[key] !== undefined) $(key).value = values[key];
+      if (values?.[key] !== undefined && $(key)) $(key).value = values[key];
+    }
+    if (values?.tabMode !== undefined && $('tabMode')) $('tabMode').value = values.tabMode;
+    if (values?.tabToken !== undefined && $('tabToken')) $('tabToken').value = values.tabToken;
+    if (values?.tabModelId !== undefined && $('tabModelId')) $('tabModelId').value = values.tabModelId;
+    if (values?.tabAddress !== undefined && $('tabAddress')) $('tabAddress').value = values.tabAddress;
+    updateTabModeVisibility();
+  }
+
+  /// 一键从本机 Cursor 读取当前登录 Token 与账号信息
+  async function extractCursorToken() {
+    const btn = $('extractTokenBtn');
+    const hint = $('tokenExtractHint');
+    btn.disabled = true;
+    btn.textContent = '正在读取…';
+    try {
+      const res = await api('/api/tab/token/extract', {method: 'POST'});
+      if (res.ok && res.token) {
+        $('tabToken').value = res.token;
+        hint.textContent = `✅ 成功提取本机 Cursor Token（账号: ${res.email || 'Cursor 用户'} · 会员: ${res.membershipType || '标准'}），点击保存即可生效！`;
+        notice(`已成功获取本机 Cursor Token (${res.email || '已获取'})`, 'ok');
+      } else {
+        hint.textContent = `❌ 提取失败：${res.error || '未找到有效凭证'}`;
+      }
+    } catch (err) {
+      hint.textContent = `❌ 提取失败：${err.message}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '一键提取本机 Token';
+    }
+  }
+
+  /// 保存 Tab 补全专属参数配置
+  async function saveTabSettings(event) {
+    event.preventDefault();
+    const btn = $('saveTabSettings');
+    btn.disabled = true;
+    btn.textContent = '保存中…';
+    $('tabSettingsHint').textContent = '';
+    try {
+      const current = lastOverview?.settings?.values || {};
+      const body = {
+        ...current,
+        tabMode: $('tabMode').value,
+        tabToken: $('tabToken').value.trim(),
+        tabModelId: $('tabModelId').value.trim(),
+        tabAddress: $('tabAddress').value.trim()
+      };
+      const result = await api('/api/settings', {method: 'POST', body});
+      fillSettings(result.settings);
+      $('tabSettingsHint').textContent = '✅ Tab 代码补全设置已保存并实时生效';
+      loadStatus({quiet: true});
+    } catch (error) {
+      $('tabSettingsHint').textContent = `❌ 保存失败：${error.message}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '保存 Tab 设置';
     }
   }
 
@@ -599,6 +687,11 @@
       fillSettings(defaults);
       $('settingsHint').textContent = '已填入默认值，点击「保存」后生效';
     });
+
+    // 绑定 Tab 补全专属卡片交互
+    if ($('tabMode')) $('tabMode').addEventListener('change', updateTabModeVisibility);
+    if ($('extractTokenBtn')) $('extractTokenBtn').addEventListener('click', extractCursorToken);
+    if ($('tabSettingsForm')) $('tabSettingsForm').addEventListener('submit', saveTabSettings);
     const btnMigrate = $('btnMigrateStorage');
     if (btnMigrate) {
       btnMigrate.addEventListener('click', async () => {

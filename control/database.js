@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {execFile} from 'node:child_process';
 import platform from '../lib/platform.js';
 
@@ -612,5 +614,48 @@ export async function cleanDatabase(dbPath, {scope = 'traces', olderThanDays = 3
     after,
     reclaimed: Math.max(0, before.total - after.total),
     durationMs: Date.now() - started
+  };
+}
+
+/// 从本机 Cursor 客户端数据目录下的 state.vscdb 中一键提取官方登录 Token 与账号信息
+export async function extractCursorAuthToken() {
+  const candidates = [
+    path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Cursor', 'User', 'globalStorage', 'state.vscdb'),
+    path.join(os.homedir(), 'Library', 'Application Support', 'Cursor', 'User', 'globalStorage', 'state.vscdb'),
+    path.join(os.homedir(), '.config', 'Cursor', 'User', 'globalStorage', 'state.vscdb')
+  ];
+  let dbPath = null;
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      dbPath = c;
+      break;
+    }
+  }
+  if (!dbPath) {
+    throw new Error('未在系统默认路径下找到 Cursor 状态数据库 state.vscdb，请确认是否已安装 Cursor');
+  }
+
+  const rawJson = await sqlite(dbPath, "SELECT key, value FROM ItemTable WHERE key LIKE 'cursorAuth/%';", {
+    readonly: true,
+    json: true,
+    timeout: 10000,
+    busyTimeout: 5000
+  });
+  const rows = parseJson(rawJson);
+  const data = {};
+  for (const row of rows) {
+    if (row && row.key) data[row.key] = row.value;
+  }
+
+  const token = data['cursorAuth/accessToken'] || data['cursorAuth/refreshToken'] || '';
+  if (!token) {
+    throw new Error('Cursor 状态数据库中未找到有效 Access Token，请先在 Cursor 客户端中登录');
+  }
+
+  return {
+    token,
+    email: data['cursorAuth/cachedEmail'] || '',
+    membershipType: data['cursorAuth/stripeMembershipType'] || 'standard',
+    dbPath
   };
 }

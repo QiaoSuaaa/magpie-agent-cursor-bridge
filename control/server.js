@@ -5,8 +5,8 @@ import http from 'node:http';
 import {execFile, spawn} from 'node:child_process';
 import {randomBytes, timingSafeEqual} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {read as readBridgeSettings, write as writeBridgeSettings, defaults as bridgeDefaults, rules as bridgeRules, modes as bridgeModes, subagentModes as bridgeSubagentModes, settingsFile} from '../lib/bridge-settings.js';
-import {readDatabase, cleanDatabase} from './database.js';
+import {read as readBridgeSettings, write as writeBridgeSettings, defaults as bridgeDefaults, rules as bridgeRules, modes as bridgeModes, subagentModes as bridgeSubagentModes, tabModes as bridgeTabModes, settingsFile} from '../lib/bridge-settings.js';
+import {readDatabase, cleanDatabase, extractCursorAuthToken} from './database.js';
 import {validate, gatewayModels} from '../lib/config.js';
 import {atomic} from '../lib/settings.js';
 import platform from '../lib/platform.js';
@@ -263,6 +263,7 @@ async function overview(repoRoot, port) {
       rules: bridgeRules,
       modes: bridgeModes,
       subagentModes: bridgeSubagentModes,
+      tabModes: bridgeTabModes,
       file: p.settings
     },
     paths: {
@@ -533,7 +534,16 @@ export function createControlServer({repoRoot, port, log = console.log}) {
 
       if (req.method === 'GET' && url.pathname === '/api/settings') {
         const p = paths(repoRoot);
-        return sendJson(res, 200, {ok: true, settings: readBridgeSettings(p.root), defaults: bridgeDefaults, rules: bridgeRules, modes: bridgeModes, subagentModes: bridgeSubagentModes, file: p.settings});
+        return sendJson(res, 200, {
+          ok: true,
+          settings: readBridgeSettings(p.root),
+          defaults: bridgeDefaults,
+          rules: bridgeRules,
+          modes: bridgeModes,
+          subagentModes: bridgeSubagentModes,
+          tabModes: bridgeTabModes,
+          file: p.settings
+        });
       }
 
       if (req.method === 'POST' && url.pathname === '/api/settings') {
@@ -542,7 +552,22 @@ export function createControlServer({repoRoot, port, log = console.log}) {
         // read-modify-write and leave the file with the older payload.
         const job = settingsQueue.then(() => {
           try {
-            const saved = writeBridgeSettings(paths(repoRoot).root, body);
+            const p = paths(repoRoot);
+            const saved = writeBridgeSettings(p.root, body);
+            // 同步更新 effective.json，使运行中的引擎实时感知并热生效 Tab 配置
+            const effFile = path.join(p.root, 'effective.json');
+            if (fs.existsSync(effFile)) {
+              try {
+                const eff = JSON.parse(fs.readFileSync(effFile, 'utf8'));
+                eff.tab = {
+                  mode: saved.tabMode || 'official',
+                  token: saved.tabToken || '',
+                  model_id: saved.tabModelId || '',
+                  address: saved.tabAddress || ''
+                };
+                atomic(effFile, JSON.stringify(eff));
+              } catch {}
+            }
             log(`bridge settings saved: ${JSON.stringify(saved)}`);
             return {status: 200, body: {ok: true, settings: saved}};
           } catch (error) {
@@ -552,6 +577,22 @@ export function createControlServer({repoRoot, port, log = console.log}) {
         settingsQueue = job.then(() => {}, () => {});
         const result = await job;
         return sendJson(res, result.status, result.body);
+      }
+
+      /// 一键从本地 Cursor 状态数据库提取官方登录 Token
+      if (req.method === 'POST' && url.pathname === '/api/tab/token/extract') {
+        try {
+          const auth = await extractCursorAuthToken();
+          return sendJson(res, 200, {
+            ok: true,
+            token: auth.token,
+            email: auth.email,
+            membershipType: auth.membershipType,
+            dbPath: auth.dbPath
+          });
+        } catch (error) {
+          return sendJson(res, 400, {ok: false, error: String(error.message || error)});
+        }
       }
 
       if (req.method === 'GET' && url.pathname === '/api/database') {
