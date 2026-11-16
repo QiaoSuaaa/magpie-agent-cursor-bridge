@@ -64,7 +64,7 @@
   <section class="card" id="tabCard">
     <div class="card-head">
       <h2>Cursor Tab 智能代码补全</h2>
-      <span class="hint">移植自 cursor-tab-server · 官方 Checksum 极速模式 & Magpie 模型补全</span>
+      <span class="hint">官方 Checksum 极速分流 & Magpie 模型补全</span>
     </div>
     <form id="tabSettingsForm" class="settings">
       <label>
@@ -75,47 +75,41 @@
             <option value="model">Magpie 模型补全模式</option>
             <option value="direct">直连官方（不经加速代理）</option>
             <option value="custom">自定义服务端点</option>
-            <option value="public">公共服务（https://tab.leokun.cn）</option>
+            <option value="public">公共服务 (tab.leokun.cn)</option>
           </select>
         </span>
       </label>
 
-      <div id="tabOfficialRow">
-        <label>
-          <span class="label">官方 Cursor Token</span>
-          <span class="field" style="display: flex; gap: 8px;">
-            <input id="tabToken" type="password" placeholder="留空则自动使用客户端本地凭证" autocomplete="off" style="flex: 1;">
-            <button id="extractTokenBtn" type="button" class="ghost" style="white-space: nowrap;">一键提取本机 Token</button>
-          </span>
-        </label>
-        <p class="hint mode-hint" id="tokenExtractHint">点击可一键从本机 Cursor 登录状态中自动读取 Access Token，支持 18 个上游端点精准分流与动态 Checksum 极速加速。</p>
-      </div>
+      <label id="tabOfficialRow">
+        <span class="label">官方 Cursor Token</span>
+        <span class="field">
+          <input id="tabToken" type="password" placeholder="留空自动使用客户端凭据" autocomplete="off" style="width: 260px;">
+          <button id="extractTokenBtn" class="ghost" type="button" style="height: 30px; white-space: nowrap;">一键提取</button>
+        </span>
+      </label>
 
-      <div id="tabModelRow" hidden>
-        <label>
-          <span class="label">补全代码模型</span>
-          <span class="field select">
-            <select id="tabModelId">
-              <option value="">跟随默认代码模型</option>
-            </select>
-          </span>
-        </label>
-        <p class="hint mode-hint">选定 Magpie 中接入的代码模型（如 deepseek-coder、gpt-6.1-sol 等）作为 Tab 补全驱动。</p>
-      </div>
+      <label id="tabModelRow" hidden>
+        <span class="label">补全代码模型</span>
+        <span class="field select">
+          <select id="tabModelId" style="min-width: 240px;">
+            <option value="">跟随默认代码模型</option>
+          </select>
+        </span>
+      </label>
 
-      <div id="tabAddressRow" hidden>
-        <label>
-          <span class="label">自定义服务地址</span>
-          <span class="field">
-            <input id="tabAddress" type="url" placeholder="http://127.0.0.1:8041">
-          </span>
-        </label>
-      </div>
+      <label id="tabAddressRow" hidden>
+        <span class="label">自定义服务地址</span>
+        <span class="field">
+          <input id="tabAddress" type="url" placeholder="http://127.0.0.1:8041" style="width: 220px;">
+        </span>
+      </label>
 
       <div class="form-actions">
         <button id="saveTabSettings" class="primary" type="submit">保存 Tab 设置</button>
         <span id="tabSettingsHint" class="hint"></span>
       </div>
+
+      <p class="hint mode-hint" id="tokenExtractHint">官方极速模式：支持 16 个上游端点精准分流与动态 Checksum 极速加速；可点击「一键提取」直接获取本机登录凭证。</p>
     </form>
   </section>
 

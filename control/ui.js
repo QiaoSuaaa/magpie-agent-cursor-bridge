@@ -262,28 +262,43 @@
       settingsFilled = true;
     }
 
-    // 动态填充 Tab 补全模型下拉候选列表
-    if ($('tabModelId') && (overview.connection?.model || runtime?.model)) {
+    // 动态填充 Tab 补全模型下拉候选列表（支持从全量可用模型中任意选择）
+    if ($('tabModelId')) {
       const activeModel = runtime?.model || overview.connection?.model || '';
+      const models = overview.availableModels && overview.availableModels.length
+        ? overview.availableModels
+        : (overview.connection?.modelList || (activeModel ? [activeModel] : []));
       const currentVal = $('tabModelId').value;
-      if (!$('tabModelId').dataset.filled) {
-        const options = [`<option value="">跟随默认代码模型 (${activeModel})</option>`];
-        if (activeModel) {
-          options.push(`<option value="${activeModel}">${activeModel}</option>`);
-        }
-        $('tabModelId').innerHTML = options.join('');
-        if (currentVal) $('tabModelId').value = currentVal;
-        $('tabModelId').dataset.filled = 'true';
+      const options = [`<option value="">跟随默认代码模型 (${activeModel || '未设置'})</option>`];
+      for (const m of models) {
+        options.push(`<option value="${m}">${m}</option>`);
       }
+      $('tabModelId').innerHTML = options.join('');
+      if (currentVal) $('tabModelId').value = currentVal;
     }
   }
 
-  /// 依据当前选中的 Tab 补全模式动态切换界面配置表单行的可见性
+  /// 依据当前选中的 Tab 补全模式动态切换界面配置表单行的可见性与提示语
   function updateTabModeVisibility() {
     const mode = $('tabMode')?.value || 'official';
-    if ($('tabOfficialRow')) $('tabOfficialRow').hidden = mode !== 'official' && mode !== 'model';
+    if ($('tabOfficialRow')) $('tabOfficialRow').hidden = mode !== 'official';
     if ($('tabModelRow')) $('tabModelRow').hidden = mode !== 'model';
     if ($('tabAddressRow')) $('tabAddressRow').hidden = mode !== 'custom';
+
+    const hint = $('tokenExtractHint');
+    if (hint) {
+      if (mode === 'official') {
+        hint.textContent = '官方极速模式：支持 16 个上游端点精准分流与动态 Checksum 极速加速；可点击「一键提取」直接获取本机登录凭证。';
+      } else if (mode === 'model') {
+        hint.textContent = 'Magpie 模型补全模式：将 Tab 代码补全请求定向调度至您在上方下拉框所选的代码模型。';
+      } else if (mode === 'direct') {
+        hint.textContent = '直连官方模式：请求直接穿透至 Cursor 默认服务器，不通过本地做任何混淆或中继。';
+      } else if (mode === 'custom') {
+        hint.textContent = '自定义服务模式：将 Tab 补全请求转发至您在上方填写的自定义服务端点。';
+      } else if (mode === 'public') {
+        hint.textContent = '公共服务模式：转发至公网社区部署的 Tab 补全服务 (https://tab.leokun.cn)。';
+      }
+    }
   }
 
   /// 填充参数设置表单，包括常规参数与 Tab 补全参数

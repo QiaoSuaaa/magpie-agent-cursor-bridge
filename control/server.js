@@ -196,6 +196,7 @@ async function launchAgentState(repoRoot) {
   return {registered: true, state, pid, supported: true};
 }
 
+/// 解析并获取 Magpie 客户端传递的连接配置及全部可用模型列表
 function safeConnection(repoRoot) {
   let data = null;
   for (const candidate of paths(repoRoot).connections) {
@@ -203,12 +204,37 @@ function safeConnection(repoRoot) {
     data = readJson(candidate);
     break;
   }
-  if (!data || typeof data !== 'object') return {exists: false};
+  const availableModels = [];
+  if (Array.isArray(data?.models)) {
+    for (const m of data.models) {
+      const id = typeof m === 'string' ? m : (m?.id || m?.name);
+      if (id && !availableModels.includes(id)) availableModels.push(id);
+    }
+  }
+  // 额外从 effective.json 读取备用模型列表，保证在任何阶段都能获取到完整模型清单
+  const p = paths(repoRoot);
+  const effFile = path.join(p.root, 'effective.json');
+  if (fs.existsSync(effFile)) {
+    try {
+      const eff = JSON.parse(fs.readFileSync(effFile, 'utf8'));
+      if (Array.isArray(eff?.models)) {
+        for (const m of eff.models) {
+          const id = typeof m === 'string' ? m : (m?.id || m?.name);
+          if (id && !availableModels.includes(id)) availableModels.push(id);
+        }
+      }
+    } catch {}
+  }
+
+  if (!data || typeof data !== 'object') {
+    return {exists: false, models: availableModels.length, modelList: availableModels};
+  }
   return {
     exists: true,
     enabled: data.enabled === true,
     model: typeof data.model === 'string' ? data.model : null,
-    models: Array.isArray(data.models) ? data.models.length : 0,
+    models: availableModels.length || (Array.isArray(data.models) ? data.models.length : 0),
+    modelList: availableModels,
     gateway: typeof data.gateway === 'string' ? data.gateway : null
   };
 }
@@ -222,6 +248,7 @@ async function overview(repoRoot, port) {
   const enginePid = Number(runtime?.pid) || null;
   const engineCommand = enginePid ? await commandOf(enginePid) : '';
   const agent = await launchAgentState(repoRoot);
+  const connection = safeConnection(repoRoot);
   return {
     now: new Date().toISOString(),
     version: typeof installation?.version === 'string' ? installation.version : null,
@@ -255,7 +282,8 @@ async function overview(repoRoot, port) {
     launchAgent: agent,
     platform: platform.platform,
     serviceSupported: platform.serviceSupported,
-    connection: safeConnection(repoRoot),
+    connection,
+    availableModels: connection.modelList || [],
     database: stat(p.database),
     settings: {
       values: readBridgeSettings(p.root),
