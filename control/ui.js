@@ -482,10 +482,6 @@
       notice(`保存参数失败：${error.message}`, 'error');
     }
   }
-    } catch (error) {
-      $('settingsHint').textContent = `保存失败：${error.message}`;
-    }
-  }
 
   function renderDatabase(data) {
     dbData = data;
