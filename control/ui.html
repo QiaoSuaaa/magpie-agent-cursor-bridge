@@ -113,6 +113,34 @@
     </form>
   </section>
 
+  <details id="modelsCard" class="card db-card" open>
+    <summary>
+      <span class="db-title"><h2>模型管理与连通性测试</h2><span class="hint">生效模型列表 · 单模型延迟探测</span></span>
+      <span class="hint db-state" id="modelsState">0 个模型</span>
+    </summary>
+    <div class="db-body" style="padding-top: 4px;">
+      <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap;">
+        <input id="modelSearch" type="search" placeholder="搜索模型 ID..." style="width: 260px; height: 30px;" autocomplete="off" spellcheck="false">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <span id="modelTestStatus" class="hint"></span>
+          <button id="testAllModelsBtn" class="ghost" type="button">一键测全部</button>
+        </div>
+      </div>
+      <table id="modelsTable" class="model-names-table">
+        <thead>
+          <tr>
+            <th style="width: 48%;">模型 ID</th>
+            <th style="width: 28%;">Cursor 简称</th>
+            <th style="width: 24%; text-align: right;">连通性测试</th>
+          </tr>
+        </thead>
+        <tbody id="modelsTableBody">
+          <tr><td colspan="3" style="text-align: center; color: var(--magpie-muted, var(--muted)); padding: 16px;">正在读取模型列表...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
   <details id="dbCard" class="card db-card">
     <summary>
       <span class="db-title"><h2>数据库管理</h2><span class="hint">bridge.db · 分类查看与清理</span></span>

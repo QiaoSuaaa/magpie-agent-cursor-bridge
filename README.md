@@ -11,6 +11,14 @@
 ## 🌟 核心特性
 
 - ⚡ **无头独立高性能引擎**：基于 Rust 原生开发，内置 MITM 代理、Connect-RPC / Protobuf 协议转码器与嵌入式 SQLite 引擎，无需任何庞大外部依赖。
+- 🚫 **彻底隐藏 Cursor 默认 Auto 开关**：
+  - 协议层下发 `ModelPickerDisplayConfiguration`（`hide_routed_model_view = true` 与 `NoAutoButton {}`），彻底抹平 Cursor 界面右下角 Auto 控件；
+  - 彻底解决 Cursor 每次重启后默认重置为 Auto 导致模型匹配失效的问题；引擎全链路兜底接管 `auto` 与 `default` 请求并回退至本地首选模型。
+- 🏷️ **模型名称智能短名化（Short Model Name）**：
+  - 针对多段冗长模型全称自动截取首段关键简称为短名，消除 Cursor 模型下拉列表中的排版截断。
+- 🧪 **控制台模型列表与连通性测速**：
+  - 控制台内嵌生效模型列表面板，每个模型配备专属「测试」按钮；
+  - 点击向 Magpie 网关实时发送 8-token 超轻量探测，毫秒级反馈实际延迟（如 `🟢 168ms`）或精准错误详情；支持搜索过滤与「一键测全部」。
 - ⌨️ **Cursor Tab 智能代码补全（双模加速）**：
   - **官方 Token 极速模式（推荐）**：支持 16 个上游端点精准分流（`StreamCpp`, `FSSyncFile`, `RecordCppFate` 等）与动态 Checksum 毫秒级极速加速；控制台提供“一键提取本机登录 Token”。
   - **Magpie 模型补全模式**：可将 Tab 代码补全请求定向调度至在 Magpie 接入的任意代码模型（如 DeepSeek、GPT-6.1-Sol 等）。

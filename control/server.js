@@ -641,6 +641,83 @@ export function createControlServer({repoRoot, port, log = console.log}) {
         }
       }
 
+      /// 单模型连通性与延迟测速接口
+      if (req.method === 'POST' && url.pathname === '/api/agent/test') {
+        const body = await parseJson(req);
+        const modelId = typeof body?.model === 'string' ? body.model.trim() : '';
+        if (!modelId) return sendJson(res, 400, {ok: false, error: '未指定要测试的模型 ID'});
+
+        const p = paths(repoRoot);
+        let config = null;
+        try {
+          if (fs.existsSync(p.effective)) {
+            config = JSON.parse(fs.readFileSync(p.effective, 'utf8'));
+          }
+          if (!config || !config.gateway) {
+            for (const candidate of p.connections) {
+              if (fs.existsSync(candidate)) {
+                const parsed = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+                if (parsed?.gateway) { config = parsed; break; }
+              }
+            }
+          }
+        } catch {}
+
+        if (!config || !config.gateway) {
+          return sendJson(res, 400, {ok: false, error: '未找到生效的 Magpie 连接配置'});
+        }
+
+        const gateway = String(config.gateway).replace(/\/+$/, '');
+        const apiKey = config.key || '';
+        const targetUrl = `${gateway}/v1/chat/completions`;
+
+        const startAt = Date.now();
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 12000);
+
+        try {
+          const resp = await fetch(targetUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+              model: modelId,
+              messages: [{role: 'user', content: 'hi'}],
+              max_tokens: 8
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+          const latencyMs = Date.now() - startAt;
+          if (!resp.ok) {
+            const errText = await resp.text().catch(() => '');
+            return sendJson(res, 200, {
+              ok: false,
+              latencyMs,
+              error: `HTTP ${resp.status}: ${errText.slice(0, 120)}`
+            });
+          }
+          const data = await resp.json().catch(() => ({}));
+          const reply = data?.choices?.[0]?.message?.content || 'OK';
+          return sendJson(res, 200, {
+            ok: true,
+            latencyMs,
+            reply: reply.trim().slice(0, 60)
+          });
+        } catch (fetchErr) {
+          clearTimeout(timer);
+          const latencyMs = Date.now() - startAt;
+          const isTimeout = fetchErr.name === 'AbortError';
+          return sendJson(res, 200, {
+            ok: false,
+            latencyMs,
+            error: isTimeout ? '请求超时（>12s）' : String(fetchErr.message || fetchErr)
+          });
+        }
+      }
+
       if (req.method === 'GET' && url.pathname === '/api/database') {
         if (busy) return sendJson(res, 409, {ok: false, error: `正在执行「${busy}」，请稍候`});
         const p = paths(repoRoot);

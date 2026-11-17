@@ -4,6 +4,22 @@
 
 ---
 
+## [v0.2.23] - 2026-11-17
+
+### 🎯 重点修复与体验强化
+- **彻底消除 Cursor 客户端右下角默认 Auto 开关**：
+  - 深入逆向 Cursor 模型选择器 Protobuf 协议，在 `AvailableModels` 的 Field 15 注入 `ModelPickerDisplayConfiguration`，下发 `hide_routed_model_view = true` 与空的 `named_view_to_routed_model_view_no_button = NoAutoButton {}`；
+  - 彻底抹平 Cursor 界面右下角的 Auto 控件，根除 Cursor 启动后自动切换为 Auto 导致路由混乱的问题；
+  - 原生引擎全面拦截所有可能携带的 `auto` 或 `default` 请求，平滑接管并无缝回退至本地首选模型。
+- **模型展示名短名化（Short Model Name）**：
+  - 针对多段冗长模型名（如 `deepseek-ai/DeepSeek-V3 · 官方 · 亚太`），自动截取首段关键简称为短名，消除 Cursor 模型下拉列表中的文字截断与排版凌乱。
+- **控制台全新「模型管理与连通性测试」卡片**：
+  - 控制台新增模型列表表格，清晰展示当前生效的所有模型 ID 与 Cursor 显示简称；
+  - 每个模型独立配备「测试」按钮，点击向 Magpie 发送 8-token 超轻量探测，毫秒级反馈延迟（如 `🟢 168ms`）或精准错误详情；
+  - 支持模型即时搜索过滤及「一键测全部」，便于一键排查全部模型的实际连通性与健康状态。
+
+---
+
 ## [v0.2.22] - 2026-11-17
 
 ### 🚀 架构优化与品牌升级

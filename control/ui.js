@@ -304,6 +304,8 @@
       $('tabModelId').innerHTML = options.join('');
       if (currentVal) $('tabModelId').value = currentVal;
     }
+
+    renderModelsList(overview);
   }
 
   /// 依据当前选中的 Tab 补全模式动态切换界面配置表单行的可见性与提示语
@@ -398,6 +400,136 @@
         btn.textContent = '保存 Tab 设置';
       }
     }
+  }
+
+  const modelTestResults = {};
+
+  /// 渲染生效模型列表与测速表格
+  function renderModelsList(overview) {
+    const tbody = $('modelsTableBody');
+    if (!tbody) return;
+    const runtime = overview?.runtime;
+    const activeModel = runtime?.model || overview?.connection?.model || '';
+    const models = overview?.availableModels && overview.availableModels.length
+      ? overview.availableModels
+      : (overview?.connection?.modelList || (activeModel ? [activeModel] : []));
+
+    if ($('modelsState')) {
+      $('modelsState').textContent = `${models.length} 个模型`;
+    }
+
+    if (!models.length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--magpie-muted, var(--muted)); padding: 16px;">暂无可用的模型，请点击顶部「同步模型」</td></tr>';
+      return;
+    }
+
+    const search = ($('modelSearch')?.value || '').trim().toLowerCase();
+    const rows = [];
+    for (const m of models) {
+      const modelId = typeof m === 'string' ? m : (m?.id || m?.name || '');
+      if (!modelId) continue;
+      if (search && !modelId.toLowerCase().includes(search)) continue;
+
+      const shortName = modelId.split(' · ')[0].split(' / ')[0].trim();
+      const existing = modelTestResults[modelId];
+
+      const tr = document.createElement('tr');
+      tr.dataset.modelId = modelId;
+
+      const tdId = document.createElement('td');
+      tdId.style.wordBreak = 'break-all';
+      const isDefault = modelId === activeModel;
+      tdId.innerHTML = `<span style="font-weight: 500; font-family: var(--magpie-code, var(--code));">${modelId}</span>${isDefault ? ' <span style="font-size: 11px; color: var(--magpie-accent, var(--accent));">● 默认</span>' : ''}`;
+
+      const tdShort = document.createElement('td');
+      tdShort.style.color = 'var(--magpie-muted, var(--muted))';
+      tdShort.style.fontFamily = 'var(--magpie-code, var(--code))';
+      tdShort.textContent = shortName;
+
+      const tdAction = document.createElement('td');
+      tdAction.style.textAlign = 'right';
+      tdAction.style.whiteSpace = 'nowrap';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ghost';
+      btn.style.height = '26px';
+      btn.style.fontSize = '11.5px';
+      btn.style.padding = '0 10px';
+      btn.dataset.testModel = modelId;
+
+      if (existing) {
+        btn.textContent = existing.text;
+        btn.title = existing.title || '';
+        if (existing.kind === 'ok') btn.style.color = 'var(--green)';
+        else if (existing.kind === 'error') btn.style.color = 'var(--red)';
+      } else {
+        btn.textContent = '测试';
+      }
+
+      tdAction.appendChild(btn);
+      tr.append(tdId, tdShort, tdAction);
+      rows.push(tr);
+    }
+
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--magpie-muted, var(--muted)); padding: 16px;">未找到匹配的模型</td></tr>';
+    } else {
+      tbody.replaceChildren(...rows);
+    }
+  }
+
+  /// 单模型测速探测请求
+  async function testModel(modelId, btn) {
+    if (!btn || !modelId) return;
+    btn.disabled = true;
+    btn.textContent = '测试中…';
+    btn.style.color = 'var(--amber)';
+    try {
+      const data = await api('/api/agent/test', {method: 'POST', body: {model: modelId}});
+      if (!data.ok) throw new Error(data.error || '测试失败');
+      const ms = data.latencyMs ? `${Math.round(data.latencyMs)}ms` : '成功';
+      modelTestResults[modelId] = {kind: 'ok', text: `🟢 ${ms}`, title: `HTTP 200 · 响应耗时 ${ms}`};
+      btn.textContent = `🟢 ${ms}`;
+      btn.title = modelTestResults[modelId].title;
+      btn.style.color = 'var(--green)';
+      if ($('modelTestStatus')) $('modelTestStatus').textContent = `${modelId} 测速通过 (${ms})`;
+    } catch (err) {
+      const errText = err.message || '测试失败';
+      modelTestResults[modelId] = {kind: 'error', text: '🔴 失败', title: errText};
+      btn.textContent = '🔴 失败';
+      btn.title = errText;
+      btn.style.color = 'var(--red)';
+      if ($('modelTestStatus')) $('modelTestStatus').textContent = `${modelId} 失败: ${errText}`;
+      notice(`模型 ${modelId} 测试失败：${errText}`, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /// 一键测试当前列表展示的所有模型
+  async function testAllModels() {
+    const btns = Array.from(document.querySelectorAll('#modelsTableBody button[data-test-model]'));
+    if (!btns.length) return;
+    const btnAll = $('testAllModelsBtn');
+    if (btnAll) {
+      btnAll.disabled = true;
+      btnAll.textContent = '测试中…';
+    }
+    if ($('modelTestStatus')) $('modelTestStatus').textContent = `正在测试 ${btns.length} 个模型…`;
+
+    for (const b of btns) {
+      const id = b.dataset.testModel;
+      if (id) {
+        await testModel(id, b);
+      }
+    }
+
+    if (btnAll) {
+      btnAll.disabled = false;
+      btnAll.textContent = '一键测全部';
+    }
+    if ($('modelTestStatus')) $('modelTestStatus').textContent = `全部模型测试完毕`;
   }
 
   async function loadStatus({quiet = false} = {}) {
@@ -745,6 +877,26 @@
     if ($('extractTokenBtn')) $('extractTokenBtn').addEventListener('click', extractCursorToken);
     if ($('saveTabSettings')) $('saveTabSettings').addEventListener('click', saveTabSettings);
     if ($('tabSettingsForm')) $('tabSettingsForm').addEventListener('submit', saveTabSettings);
+
+    // 绑定模型测速与搜索事件
+    const modelsTbody = $('modelsTableBody');
+    if (modelsTbody) {
+      modelsTbody.addEventListener('click', (e) => {
+        const btn = e.target.closest?.('button[data-test-model]');
+        if (btn) {
+          testModel(btn.dataset.testModel, btn);
+        }
+      });
+    }
+    if ($('modelSearch')) {
+      $('modelSearch').addEventListener('input', () => {
+        if (lastOverview) renderModelsList(lastOverview);
+      });
+    }
+    if ($('testAllModelsBtn')) {
+      $('testAllModelsBtn').addEventListener('click', testAllModels);
+    }
+
     const btnMigrate = $('btnMigrateStorage');
     if (btnMigrate) {
       btnMigrate.addEventListener('click', async () => {
