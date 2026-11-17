@@ -88,6 +88,15 @@ if(command==='status') {
   console.log(fs.existsSync(file('status.json'))?fs.readFileSync(file('status.json'),'utf8'):'未安装或尚未运行');
 } else if(command==='restore') {
   console.log(JSON.stringify({preservedExternalChanges:restoreProxy(file('settings-journal.json'))}));
+} else if(command==='reset-all') {
+  // 1. 还原代理
+  restoreProxy(file('settings-journal.json'));
+  // 2. 清除记录状态的文件
+  const filesToClean = ['status.json', 'effective.json', 'settings-journal.json'];
+  for(const f of filesToClean) {
+    try { fs.rmSync(file(f), {force: true}); } catch {}
+  }
+  console.log("所有插件状态已重置，请重新打开 Magpie 客户端。");
 } else if(command==='supervise') {
   fs.mkdirSync(root,{recursive:true,mode:0o700});
   if(!platform.IS_WIN) process.umask(0o077);
