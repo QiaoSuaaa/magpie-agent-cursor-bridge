@@ -148,6 +148,9 @@ if(command==='status') {
     atomic(file('effective.json'),serialized);
     lastEffective=serialized;
     const actualDataDir = resolveDataDir();
+    if (!fs.existsSync(actualDataDir)) {
+      try { fs.mkdirSync(actualDataDir, { recursive: true }); } catch {}
+    }
     const engine=spawn(platform.enginePathFor(packageDir),[file('effective.json')],{
       env:{...process.env,CURSOR_BYOK_DATA_DIR:actualDataDir,CURSOR_BRIDGE_RUN_MODE:mode,CURSOR_BRIDGE_SUBAGENT_MODE:subagentMode},stdio:['pipe','pipe','pipe'],windowsHide:true
     });
