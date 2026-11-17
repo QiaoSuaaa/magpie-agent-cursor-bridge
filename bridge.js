@@ -149,7 +149,7 @@ if(command==='status') {
     lastEffective=serialized;
     const actualDataDir = resolveDataDir();
     const engine=spawn(platform.enginePathFor(packageDir),[file('effective.json')],{
-      env:{...process.env,CURSOR_BYOK_DATA_DIR:actualDataDir,CURSOR_BRIDGE_RUN_MODE:mode,CURSOR_BRIDGE_SUBAGENT_MODE:subagentMode,...(preferredProxyPort?{CURSOR_BRIDGE_PROXY_PORT:preferredProxyPort}:{})},stdio:['pipe','pipe','pipe'],windowsHide:true
+      env:{...process.env,CURSOR_BYOK_DATA_DIR:actualDataDir,CURSOR_BRIDGE_RUN_MODE:mode,CURSOR_BRIDGE_SUBAGENT_MODE:subagentMode},stdio:['pipe','pipe','pipe'],windowsHide:true
     });
     runningMode=mode;runningSubagentMode=subagentMode;
     child=engine;
