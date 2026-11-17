@@ -1,18 +1,17 @@
 // Magpie's agent sandbox only resolves modules beside agent.js and rejects
-// node: builtins, so this file uses globals only — no imports. If the host
-// hides process, fall back to the historical macOS layout; Magpie expands a
-// leading ~ in the config path.
-const env = globalThis.process?.env || {};
-const platform = globalThis.process?.platform || 'darwin';
-const home = env.HOME || env.USERPROFILE || '~';
-const join = (...parts) => parts.filter(Boolean).join('/').replace(/\/{2,}/g, '/');
-const local = env.LOCALAPPDATA || join(home, 'AppData', 'Local');
-const roaming = env.APPDATA || join(home, 'AppData', 'Roaming');
+// node: builtins, so this file uses globals only — no imports.
+//
+// In Magpie's agent sandbox, `globalThis.process` is undefined. The agent
+// system checks `agent.dir` to verify whether the target app is installed;
+// if the path does not exist on disk, Magpie displays an error (e.g.
+// "magpie 在 \Applications\Cursor.app 没有找到它") and hides the agent from
+// the Agent list completely.
+//
+// Magpie natively expands a leading `~` across all platforms (Windows,
+// macOS, Linux) to the user's home directory. Pointing `dir` and `config`
+// to `~/.config/magpie-cursor-bridge` ensures the directory check always
+// succeeds regardless of the OS, drive letter, or custom Cursor install path.
 
-export const cursorDir = platform === 'linux'
-  ? 'cursor'
-  : (platform === 'win32' ? join(local, 'Programs', 'cursor') : '/Applications/Cursor.app');
+export const cursorDir = '~/.config/magpie-cursor-bridge';
+export const connectionFile = '~/.config/magpie-cursor-bridge/connection.json';
 
-export const connectionFile = platform === 'win32'
-  ? join(roaming, 'magpie-cursor-bridge', 'connection.json')
-  : join(home, '.config', 'magpie-cursor-bridge', 'connection.json');

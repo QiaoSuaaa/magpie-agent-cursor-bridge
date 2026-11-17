@@ -801,7 +801,7 @@ export function createControlServer({repoRoot, port, log = console.log}) {
           } catch {}
         }
         if (!raw || raw.trim() === '{}') {
-          return sendJson(res, 400, { ok: false, error: '未找到 Magpie 连接配置，请先在 Magpie 的 Agents 菜单中连接 Cursor · Magpie Bridge' });
+          return sendJson(res, 400, { ok: false, error: '未找到 Magpie 连接配置，请先在 Magpie 的 Agent 列表中开启并连接「Cursor · Magpie 智能桥接」' });
         }
         try {
           const c = validate(JSON.parse(raw));

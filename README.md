@@ -1,6 +1,6 @@
-# Cursor · Magpie Bridge
+# Cursor · Magpie 智能桥接 (Cursor · Magpie Bridge)
 
-> 让 **Cursor** 能够直接无缝使用 **Magpie** 网关代理中的任意大模型（GPT-6.1-Sol / Claude 3.7 / Gemini 2.5 / DeepSeek 等），具备超高前缀缓存命中率、智能 Tab 代码补全、子代理（Subagent）深度调度、便携式绿色数据库以及全自动免重启热切换能力。
+> 让 **Cursor** 能够直接无缝使用 **Magpie** 网关代理中的任意大模型（GPT-6.1-Sol / Claude 3.7 / Gemini 2.5 / DeepSeek 等），具备全平台自适应路径、超高前缀缓存命中率、智能 Tab 代码补全、子代理（Subagent）深度调度、便携式绿色数据库以及全自动免重启热切换能力。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64%20%7C%20macOS-green.svg)]()

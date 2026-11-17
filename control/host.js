@@ -1,8 +1,19 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createControlServer} from './server.js';
 import platform from '../lib/platform.js';
+
+// Ensure ~/.config/magpie-cursor-bridge exists so Magpie's agent dir check
+// passes reliably across all platforms (Windows, macOS, Linux) without ENOENT.
+try {
+  const homeDir = process.env.USERPROFILE || process.env.HOME || os.homedir();
+  const bridgeConfigDir = path.join(homeDir, '.config', 'magpie-cursor-bridge');
+  if (!fs.existsSync(bridgeConfigDir)) {
+    fs.mkdirSync(bridgeConfigDir, {recursive: true, mode: 0o700});
+  }
+} catch { /* ignore filesystem permission glitches */ }
 
 // Magpie loads this Bun module as the plugin's server side and keeps it for
 // the life of the app. That makes it the one place that can still answer when

@@ -1,6 +1,6 @@
 {
   "name": "magpie-agent-cursor-bridge",
-  "version": "0.2.21",
+  "version": "0.2.22",
   "type": "module",
   "description": "Cursor protocol bridge backed by Magpie",
   "license": "MIT",
@@ -8,10 +8,10 @@
   "magpie": {
     "agent": "./agent.js",
     "page": {
-      "title": "Cursor Bridge",
+      "title": "Cursor 智能桥接",
       "titles": {
-        "zh": "Cursor 桥接控制台",
-        "zh-TW": "Cursor 橋接控制台"
+        "zh": "Cursor 智能桥接控制台",
+        "zh-TW": "Cursor 智能橋接控制台"
       },
       "file": "ui/console.html",
       "icon": "ui/cursor.svg"
@@ -22,8 +22,8 @@
         "menu": "agent",
         "title": "Bridge console",
         "titles": {
-          "zh": "桥接控制台",
-          "zh-TW": "橋接控制台"
+          "zh": "智能桥接控制台",
+          "zh-TW": "智能橋接控制台"
         }
       }
     ],

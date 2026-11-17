@@ -1,6 +1,20 @@
 # 更新日志 (CHANGELOG)
 
-所有关于 **Cursor · Magpie Bridge** 的重要更新、功能演进与问题修复均记录于此。
+所有关于 **Cursor · Magpie 智能桥接** 的重要更新、功能演进与问题修复均记录于此。
+
+---
+
+## [v0.2.22] - 2026-11-17
+
+### 🚀 架构优化与品牌升级
+- **全面更名为「Cursor · Magpie 智能桥接」**：
+  - 插件名称、侧边栏标题、控制台界面及 Agent 选项全量规范化为「Cursor · Magpie 智能桥接」，更具辨识度与中文亲和力。
+- **全平台自适应路径统一（消除沙箱跨平台误判）**：
+  - 彻底解决 Magpie 在独立沙箱中加载 `agent.js` 时因缺乏 `process.platform` 而默认回退为 `darwin`，进而检查 `\Applications\Cursor.app` 不存在并在 Agent 列表中强制隐藏插件的严重 Bug；
+  - 统一遵循 Magpie 官方生态最佳实践，将 `agent.dir` 与 `agent.config` 指向跨平台通用自适应路径 `~/.config/magpie-cursor-bridge`；
+  - 无论在 Windows（任意盘符）、macOS 还是 Linux 上，无论 Cursor 是否安装在默认目录，Magpie 校验均 100% 成功，Agent 列表永久可见。
+- **配置目录自动预创建与防御性容错**：
+  - 在插件宿主初始化（`host.js`）及安装入口（`install.js`）加入自动预创建机制，新电脑首次安装插件无需手动点击，环境目录即刻就绪。
 
 ---
 
