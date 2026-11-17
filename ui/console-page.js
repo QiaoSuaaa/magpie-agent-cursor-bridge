@@ -119,6 +119,16 @@
 
     $('open').addEventListener('click', openConsole);
     $('save').addEventListener('click', savePort);
+    $('reset').addEventListener('click', async () => {
+      if(confirm('确定要清除所有缓存和代理设置吗？')) {
+        try {
+          await magpie.bridge.command('reset-all');
+          $('hint').textContent = '已发送重置命令。';
+        } catch(e) {
+          $('hint').textContent = '重置失败：' + e.message;
+        }
+      }
+    });
     $('port').addEventListener('keydown', (event) => {
       if (event.key === 'Enter') savePort();
     });
