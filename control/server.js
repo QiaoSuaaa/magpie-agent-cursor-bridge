@@ -133,6 +133,34 @@ const alive = (pid) => {
 };
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * 快速安全读取大日志文件末尾 N 行，防止撑爆内存
+ * @param {string} filePath 日志文件绝对路径
+ * @param {number} maxLines 最大行数（默认 80 行）
+ */
+function readLogTail(filePath, maxLines = 80) {
+  if (!fs.existsSync(filePath)) return { text: '(日志文件尚不存在)', lines: 0 };
+  try {
+    const s = fs.statSync(filePath);
+    if (s.size === 0) return { text: '(日志文件为空)', lines: 0 };
+    const readSize = Math.min(s.size, 128 * 1024);
+    const fd = fs.openSync(filePath, 'r');
+    const buf = Buffer.alloc(readSize);
+    fs.readSync(fd, buf, 0, readSize, s.size - readSize);
+    fs.closeSync(fd);
+    let str = buf.toString('utf8');
+    if (readSize < s.size) {
+      const firstNewline = str.indexOf('\n');
+      if (firstNewline !== -1) str = str.slice(firstNewline + 1);
+    }
+    const lines = str.split(/\r?\n/);
+    const slice = lines.slice(-maxLines);
+    return { text: slice.join('\n').trim(), lines: slice.length };
+  } catch (err) {
+    return { text: `读取日志异常: ${err.message}`, lines: 0 };
+  }
+}
+
 function run(command, args, {timeout = 15000} = {}) {
   return new Promise((resolve) => {
     // windowsHide is a no-op off Windows; there it keeps the PowerShell pid
@@ -922,6 +950,201 @@ export function createControlServer({repoRoot, port, log = console.log}) {
         } finally {
           busy = null;
         }
+      }
+
+      /// 获取实时日志末尾行内容接口
+      if (req.method === 'GET' && url.pathname === '/api/logs') {
+        const p = paths(repoRoot);
+        const name = url.searchParams.get('name') || 'engine';
+        const lines = Number(url.searchParams.get('lines')) || 80;
+        let targetFile = p.engineLog;
+        if (name === 'supervisor') targetFile = p.supervisorLog;
+        else if (name === 'error' || name === 'supervisor-error') targetFile = p.supervisorError;
+
+        const result = readLogTail(targetFile, lines);
+        return sendJson(res, 200, {
+          ok: true,
+          name,
+          path: targetFile,
+          lines: result.lines,
+          text: result.text
+        });
+      }
+
+      /// 运行服务与依赖一键体检接口
+      if (req.method === 'POST' && url.pathname === '/api/selftest') {
+        const body = await readBody(req).catch(() => ({}));
+        const withModel = body.model === true;
+        const p = paths(repoRoot);
+        const checks = [];
+        let allOk = true;
+
+        // 1. 控制服务连通性
+        const t0 = Date.now();
+        checks.push({
+          label: '控制服务与端口',
+          ok: true,
+          detail: `控制服务运行正常 · PID ${process.pid} · 端口 ${ownPort}`,
+          durationMs: Date.now() - t0
+        });
+
+        // 2. 原生引擎与代理拦截
+        const t1 = Date.now();
+        let engineOk = false;
+        let engineDetail = '';
+        try {
+          const runtime = readJson(p.status);
+          const supervisorAlive = alive(readPid(p.supervisorPid));
+          const enginePid = runtime?.pid ? Number(runtime.pid) : null;
+          const isEngineAlive = enginePid ? alive(enginePid) : false;
+          if (runtime && isEngineAlive) {
+            engineOk = true;
+            engineDetail = `代理端口 127.0.0.1:${runtime.proxy || 45678} · PID ${enginePid} · 状态: ${runtime.state || 'connected'}`;
+          } else if (supervisorAlive) {
+            engineDetail = `守护进程 PID ${readPid(p.supervisorPid)} 存活，但原生引擎未在运行`;
+          } else {
+            engineDetail = '原生引擎未运行，请在控制台上方点击「启动」';
+          }
+        } catch (e) {
+          engineDetail = `检测异常: ${e.message}`;
+        }
+        if (!engineOk) allOk = false;
+        checks.push({
+          label: '原生引擎与代理端口',
+          ok: engineOk,
+          detail: engineDetail,
+          durationMs: Date.now() - t1
+        });
+
+        // 3. CA 根证书就绪状态
+        const t2 = Date.now();
+        let certOk = false;
+        let certDetail = '';
+        try {
+          const certCandidates = [
+            path.join(p.root, 'data/ca/ca.crt'),
+            path.join(p.data, 'ca/ca.crt'),
+            path.join(p.root, 'ca.crt')
+          ];
+          const found = certCandidates.find(c => fs.existsSync(c));
+          if (found) {
+            certOk = true;
+            certDetail = `根证书文件就绪 (${path.basename(path.dirname(found))}/${path.basename(found)})`;
+          } else {
+            certDetail = '未在数据目录中找到 ca.crt 根证书文件';
+          }
+        } catch (e) {
+          certDetail = `证书检测异常: ${e.message}`;
+        }
+        if (!certOk) allOk = false;
+        checks.push({
+          label: 'MITM 根证书状态',
+          ok: certOk,
+          detail: certDetail,
+          durationMs: Date.now() - t2
+        });
+
+        // 4. 数据库存储与读写状态
+        const t3 = Date.now();
+        let dbOk = false;
+        let dbDetail = '';
+        try {
+          if (fs.existsSync(p.database)) {
+            const s = fs.statSync(p.database);
+            const mb = (s.size / (1024 * 1024)).toFixed(2);
+            dbOk = true;
+            dbDetail = `正常 · 大小 ${mb} MB · 位于 ${p.database}`;
+          } else {
+            dbDetail = `数据库尚未生成 (${p.database})`;
+          }
+        } catch (e) {
+          dbDetail = `存储检测异常: ${e.message}`;
+        }
+        if (!dbOk) allOk = false;
+        checks.push({
+          label: '数据库存储状态',
+          ok: dbOk,
+          detail: dbDetail,
+          durationMs: Date.now() - t3
+        });
+
+        // 5. Magpie 上游网关与模型测试
+        const t4 = Date.now();
+        let gwOk = false;
+        let gwDetail = '';
+        try {
+          let config = null;
+          if (fs.existsSync(p.effective)) config = readJson(p.effective);
+          if (!config?.gateway) {
+            for (const cand of p.connections) {
+              if (fs.existsSync(cand)) {
+                const parsed = readJson(cand);
+                if (parsed?.gateway) { config = parsed; break; }
+              }
+            }
+          }
+          if (!config || !config.gateway) {
+            gwDetail = '未找到 Magpie 网关连接配置';
+          } else {
+            const gateway = String(config.gateway).replace(/\/+$/, '');
+            const activeModel = config.model || (Array.isArray(config.models) && (config.models[0]?.id || config.models[0]?.name)) || 'default';
+            if (withModel) {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 10000);
+              const resp = await fetch(`${gateway}/v1/chat/completions`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${config.key || ''}`
+                },
+                body: JSON.stringify({
+                  model: activeModel,
+                  messages: [{ role: 'user', content: 'ping' }],
+                  max_tokens: 8
+                }),
+                signal: controller.signal
+              }).finally(() => clearTimeout(timer));
+              const lat = Date.now() - t4;
+              if (resp.ok) {
+                gwOk = true;
+                gwDetail = `网关 ${gateway} 连通 · 模型 ${activeModel} 探测通过 (${lat}ms)`;
+              } else {
+                gwDetail = `网关 ${gateway} 返回 HTTP ${resp.status}`;
+              }
+            } else {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 5000);
+              const resp = await fetch(`${gateway}/v1/models`, {
+                headers: { 'Authorization': `Bearer ${config.key || ''}` },
+                signal: controller.signal
+              }).finally(() => clearTimeout(timer));
+              const lat = Date.now() - t4;
+              if (resp.ok) {
+                gwOk = true;
+                gwDetail = `网关 ${gateway} 连通响应正常 (${lat}ms)`;
+              } else {
+                gwDetail = `网关返回 HTTP ${resp.status}`;
+              }
+            }
+          }
+        } catch (e) {
+          gwDetail = `网关请求超时或失败: ${e.message}`;
+        }
+        if (!gwOk) allOk = false;
+        checks.push({
+          label: 'Magpie 网关与模型',
+          ok: gwOk,
+          detail: gwDetail,
+          durationMs: Date.now() - t4
+        });
+
+        return sendJson(res, 200, {
+          ok: true,
+          result: {
+            ok: allOk,
+            checks
+          }
+        });
       }
 
       if (req.method === 'POST' && url.pathname === '/api/open') {

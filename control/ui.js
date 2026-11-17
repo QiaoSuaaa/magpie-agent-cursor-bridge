@@ -532,6 +532,97 @@
     if ($('modelTestStatus')) $('modelTestStatus').textContent = `全部模型测试完毕`;
   }
 
+  let hasLoadedLogs = false;
+
+  /// 运行服务与依赖一键体检
+  async function runSelftest() {
+    const btn = $('runSelftestBtn');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = '检查中…';
+    if ($('selftestSummaryHint')) $('selftestSummaryHint').textContent = '正在执行全面体检，请稍候…';
+    if ($('selftestState')) $('selftestState').textContent = '检查中…';
+
+    try {
+      const withModel = $('selftestWithModel')?.checked ?? true;
+      const data = await api('/api/selftest', {method: 'POST', body: {model: withModel}});
+      const res = data.result || {};
+      const checks = res.checks || [];
+
+      const box = $('selftestResultsBox');
+      const tbody = $('selftestTableBody');
+      if (box && tbody) {
+        box.hidden = false;
+        const rows = [];
+        for (const c of checks) {
+          const tr = document.createElement('tr');
+
+          const tdLabel = document.createElement('td');
+          tdLabel.style.fontWeight = '500';
+          tdLabel.textContent = c.label;
+
+          const tdStatus = document.createElement('td');
+          tdStatus.innerHTML = c.ok
+            ? '<span style="color: var(--green); font-weight: 500;">🟢 通过</span>'
+            : '<span style="color: var(--red); font-weight: 500;">🔴 异常</span>';
+
+          const tdDetail = document.createElement('td');
+          tdDetail.style.color = 'var(--magpie-fg, var(--fg))';
+          tdDetail.style.fontSize = '11.5px';
+          tdDetail.style.wordBreak = 'break-word';
+          tdDetail.textContent = c.detail;
+
+          const tdDuration = document.createElement('td');
+          tdDuration.style.textAlign = 'right';
+          tdDuration.style.color = 'var(--magpie-muted, var(--muted))';
+          tdDuration.style.fontFamily = 'var(--magpie-code, var(--code))';
+          tdDuration.textContent = `${c.durationMs}ms`;
+
+          tr.append(tdLabel, tdStatus, tdDetail, tdDuration);
+          rows.push(tr);
+        }
+        tbody.replaceChildren(...rows);
+      }
+
+      if ($('selftestSummaryHint')) {
+        $('selftestSummaryHint').textContent = res.ok
+          ? '✅ 全项体检通过，所有运行组件与网关均正常'
+          : '⚠️ 体检发现异常项，请核对上方检查明细';
+      }
+      if ($('selftestState')) {
+        $('selftestState').textContent = res.ok ? '体检正常' : '发现异常';
+      }
+      notice(res.ok ? '服务与依赖自检全部通过' : '自检发现异常，请核对诊断明细', res.ok ? 'ok' : 'warning');
+    } catch (err) {
+      if ($('selftestSummaryHint')) $('selftestSummaryHint').textContent = `自检失败：${err.message}`;
+      if ($('selftestState')) $('selftestState').textContent = '自检失败';
+      notice(`自检请求失败：${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '运行自检';
+    }
+  }
+
+  /// 加载并展示实时日志末尾内容
+  async function loadLogs() {
+    const name = $('logNameSelect')?.value || 'engine';
+    const box = $('logContentBox');
+    const hint = $('logsHint');
+    if (hint) hint.textContent = '读取中…';
+
+    try {
+      const data = await api(`/api/logs?name=${encodeURIComponent(name)}&lines=80`);
+      if (box) {
+        box.textContent = data.text || '(暂无日志内容)';
+        box.scrollTop = box.scrollHeight;
+      }
+      if (hint) hint.textContent = `已载入 ${data.lines || 0} 行 · ${data.name}.log`;
+    } catch (err) {
+      if (box) box.textContent = `加载日志失败：${err.message}`;
+      if (hint) hint.textContent = '读取失败';
+    }
+  }
+
   async function loadStatus({quiet = false} = {}) {
     try {
       const data = await api('/api/status');
@@ -895,6 +986,19 @@
     }
     if ($('testAllModelsBtn')) {
       $('testAllModelsBtn').addEventListener('click', testAllModels);
+    }
+
+    // 绑定运行自检与实时日志交互
+    if ($('runSelftestBtn')) $('runSelftestBtn').addEventListener('click', runSelftest);
+    if ($('refreshLogsBtn')) $('refreshLogsBtn').addEventListener('click', loadLogs);
+    if ($('logNameSelect')) $('logNameSelect').addEventListener('change', loadLogs);
+    if ($('diagCard')) {
+      $('diagCard').addEventListener('toggle', () => {
+        if ($('diagCard').open && !hasLoadedLogs) {
+          loadLogs();
+          hasLoadedLogs = true;
+        }
+      });
     }
 
     const btnMigrate = $('btnMigrateStorage');

@@ -218,6 +218,54 @@
     </div>
   </details>
 
+  <details id="diagCard" class="card db-card">
+    <summary>
+      <span class="db-title"><h2>日志与运行自检</h2><span class="hint">一键健康体检 · 实时日志查看</span></span>
+      <span class="hint db-state" id="selftestState">展开后自检</span>
+    </summary>
+    <div class="db-body" style="padding-top: 4px;">
+      <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button id="runSelftestBtn" class="primary" type="button" style="height: 30px;">运行自检</button>
+          <label style="font-size: 11.5px; color: var(--magpie-muted, var(--muted)); display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;">
+            <input id="selftestWithModel" type="checkbox" checked> 包含极短大模型请求探测
+          </label>
+        </div>
+        <span id="selftestSummaryHint" class="hint"></span>
+      </div>
+
+      <div id="selftestResultsBox" hidden style="margin-bottom: 14px;">
+        <table class="model-names-table" id="selftestTable">
+          <thead>
+            <tr>
+              <th style="width: 25%;">检查项</th>
+              <th style="width: 15%;">状态</th>
+              <th style="width: 48%;">检查明细</th>
+              <th style="width: 12%; text-align: right;">耗时</th>
+            </tr>
+          </thead>
+          <tbody id="selftestTableBody"></tbody>
+        </table>
+      </div>
+
+      <div style="border-top: 1px solid var(--magpie-line, var(--line)); padding-top: 10px;">
+        <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="font-size: 12px; font-weight: 500;">实时日志</span>
+            <select id="logNameSelect" style="height: 28px; font-size: 11.5px;">
+              <option value="engine">engine.log (引擎核心日志)</option>
+              <option value="supervisor">supervisor.log (守护进程日志)</option>
+              <option value="error">supervisor-error.log (错误日志)</option>
+            </select>
+            <button id="refreshLogsBtn" class="ghost" type="button" style="height: 28px; font-size: 11.5px;">刷新日志</button>
+          </div>
+          <span id="logsHint" class="hint">显示最近 80 行</span>
+        </div>
+        <pre id="logContentBox" class="output" style="max-height: 280px; min-height: 120px; font-size: 11px;"></pre>
+      </div>
+    </div>
+  </details>
+
   <section class="card">
     <div class="card-head">
       <h2>数据存储与迁移</h2>
