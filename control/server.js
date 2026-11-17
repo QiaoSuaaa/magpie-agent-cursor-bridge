@@ -671,7 +671,7 @@ export function createControlServer({repoRoot, port, log = console.log}) {
 
       /// 单模型连通性与延迟测速接口
       if (req.method === 'POST' && url.pathname === '/api/agent/test') {
-        const body = await parseJson(req);
+        const body = await readBody(req).catch(() => ({}));
         const modelId = typeof body?.model === 'string' ? body.model.trim() : '';
         if (!modelId) return sendJson(res, 400, {ok: false, error: '未指定要测试的模型 ID'});
 
