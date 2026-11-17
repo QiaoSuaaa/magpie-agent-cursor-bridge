@@ -1,4 +1,11 @@
-# Cursor · Magpie 智能桥接 (Cursor · Magpie Bridge)
+# Cursor · Magpie 智能桥接 / Cursor · Magpie Bridge
+
+[English](#english) | [简体中文](#简体中文)
+
+---
+
+<a name="简体中文"></a>
+## 🇨🇳 简体中文
 
 > 让 **Cursor** 能够直接无缝使用 **Magpie** 网关代理中的任意大模型（GPT-6.1-Sol / Claude 3.7 / Gemini 2.5 / DeepSeek 等），具备全平台自适应路径、超高前缀缓存命中率、智能 Tab 代码补全、子代理（Subagent）深度调度、便携式绿色数据库以及全自动免重启热切换能力。
 
@@ -8,12 +15,12 @@
 
 ---
 
-## 🌟 核心特性
+### 🌟 核心特性
 
 - ⚡ **无头独立高性能引擎**：基于 Rust 原生开发，内置 MITM 代理、Connect-RPC / Protobuf 协议转码器与嵌入式 SQLite 引擎，无需任何庞大外部依赖。
 - 🚫 **彻底隐藏 Cursor 默认 Auto 开关**：
   - 协议层下发 `ModelPickerDisplayConfiguration`（`hide_routed_model_view = true` 与 `NoAutoButton {}`），彻底抹平 Cursor 界面右下角 Auto 控件；
-  - 彻底解决 Cursor 每次重启后默认重置为 Auto 导致模型匹配失效的问题；引擎全链路兜底接管 `auto` 与 `default` 请求并回退至本地首选模型。
+  - 根除 Cursor 启动后自动重置为 Auto 导致模型匹配失效的问题；引擎全链路兜底接管 `auto` 与 `default` 请求并平滑回退至本地首选模型。
 - 🏷️ **模型名称智能短名化（Short Model Name）**：
   - 针对多段冗长模型全称自动截取首段关键简称为短名，消除 Cursor 模型下拉列表中的排版截断。
 - 🧪 **控制台模型列表与连通性测速**：
@@ -47,7 +54,7 @@
 
 ---
 
-## 🏗️ 架构与运行原理
+### 🏗️ 架构与运行原理
 
 ```text
 ┌──────────────┐          Protobuf / Connect-RPC           ┌────────────────────────────────────────┐
@@ -74,45 +81,17 @@
 
 ---
 
-## 📦 目录结构
+### 🚀 快速开始
 
-```text
-magpie-agent-cursor-bridge/
-├── bin/
-│   └── win32-x64/
-│       └── cursor-magpie-bridge.exe     # 独立无头 Rust 拦截引擎
-├── control/                             # 控制台后端与前端
-│   ├── database.js                      # 直读 SQLite bridge.db 物理分析
-│   ├── server.js                        # 本地控制服务 (端口 3580)
-│   ├── ui.html                          # 控制台前端界面
-│   ├── ui.js                            # 控制台前端交互逻辑
-│   └── ui.css                           # 页面样式表
-├── lib/                                 # 平台探测、配置读写与安装逻辑
-│   ├── bridge-settings.js               # 参数读写与校验 (bridge-settings.json)
-│   ├── config.js                        # Magpie 连接配置校验与模型解析
-│   ├── install.js                       # 证书初始化与服务管理
-│   ├── platform.js                      # 跨平台路径与系统适配
-│   └── settings.js                      # Cursor 配置原子写入与还原
-├── agent.js                             # Magpie Agent 描述符
-├── bridge.js                            # 后台守护进程（进程管理与状态报告）
-├── install.js / setup.command           # 一键安装 / 卸载脚本
-├── integrity.json                       # 核心二进制哈希校验清单
-└── package.json                         # 标准 Magpie 插件元数据
-```
-
----
-
-## 🚀 快速开始
-
-### 方式一：在 Magpie 中直接加载（推荐）
+#### 方式一：在 Magpie 中直接加载（推荐）
 
 1. 打开 **Magpie** 设置 -> **插件管理**；
 2. 点击 **“添加本地插件”**，选择本仓库所在文件夹；
-3. 在 Magpie 的 **Agents** 列表中开启 **Cursor · Magpie Bridge** 并选择模型；
+3. 在 Magpie 的 **Agents** 列表中开启 **Cursor · Magpie 智能桥接** 并选择模型；
 4. 在 Magpie 左侧菜单点击 **Cursor 桥接控制台**，即可根据需要配置 Tab 补全或参数；
 5. Cursor 即刻畅享 Magpie 模型与智能补全！
 
-### 方式二：命令行一键安装守护进程
+#### 方式二：命令行一键安装守护进程
 
 在终端（PowerShell 或 Bash）中执行：
 
@@ -131,40 +110,96 @@ node install.js setup
 
 ---
 
-## 💡 常见问题与技巧
+### 💡 常见问题与技巧
 
-### 1. 修改模型或切换 Tab 模式需要重启 Cursor 吗？
+#### 1. 修改模型或切换 Tab 模式需要重启 Cursor 吗？
 - **完全不需要！** 代理端口始终固定在 `http://127.0.0.1:45678`，所有模型切换和 Tab 设置均在本地代理内核内部实时生效，Cursor 客户端无感透明。
 - **极速热重载**：若在初次配置或更换极端网络环境下需重新加载网络栈，无需完全退出 Cursor，直接在 Cursor 中按下快捷键 **`Ctrl + Shift + P`**（或 `F1`），输入并运行 **`Developer: Reload Window`（重载窗口）**，仅需 **1 秒钟** 即可热重载所有网络连接。
 
-### 2. Cursor Tab 代码智能补全如何选择？
+#### 2. Cursor Tab 代码智能补全如何选择？
 - **官方 Token 极速模式（推荐）**：如果您有 Cursor 账号，在控制台点击 **“一键提取”** 获取本机 Token，即可使用官方 Checksum 毫秒级极速补全；
 - **Magpie 模型补全模式**：在控制台将模式切换为“Magpie 模型补全模式”，下拉选择一个支持代码补全的模型（如 DeepSeek 等），点击 **“保存 Tab 设置”** 即可生效。
 
-### 3. 数据如何迁移到其他盘符（如 E 盘）？
+#### 3. 数据如何迁移到其他盘符（如 E 盘）？
 - 打开控制台的 **“数据存储与迁移”** 卡片；
 - 输入您的目标目录（例如 `E:\cursorbyokdb`），点击 **“迁移 / 切换”**；
 - 若目标目录为空，系统会自动将当前数据库完整拷贝过去并绑定；若目标目录已有数据，将直接安全挂载生效。
 
 ---
 
-## 📝 更新日志 (CHANGELOG)
+<a name="english"></a>
+## 🇬🇧 English
 
-详细的各版本特性演进与问题修复记录请参阅 [CHANGELOG.md](CHANGELOG.md)：
+> Connect **Cursor** directly to any model configured in **Magpie** (GPT-6.1-Sol, Claude 3.7, Gemini 2.5, DeepSeek, etc.) with universal cross-platform paths, high prefix-cache hit rates, intelligent dual-mode Tab autocompletion, native Subagent scheduling, green portable storage, and seamless zero-restart hot-reloads.
 
-- **[v0.2.21]** - 2026-11-16
-  - 🚀 新增 **Cursor Tab 智能代码补全**（官方 Token 极速 16 端点分流 + Magpie 模型定向补全）；
-  - 🤖 深度支持 **子代理（Subagent / Task）** 与智能模型继承，新增异步后台/同步阻塞双模式；
-  - 🛠️ 修复“保存 Tab 设置”按钮事件阻断问题，完善全局悬浮通知与免重启说明。
-- **[v0.2.20]** - 2026-11-16
-  - ⚡ 新增模型目录一键实时热同步。
-- **[v0.2.19]** - 2026-11-16
-  - 📊 重构数据库物理直读分析，支持按类型查看、VACUUM 碎片整理与安全清理。
-- **[v0.2.18]** - 2026-11-15
-  - 💾 增加绿色便携存储与跨盘迁移绑定，支持 Cursor 3.29+ 二进制编码。
+### 🌟 Key Features
+
+- ⚡ **Standalone High-Performance Rust Engine**: Built with native Rust MITM proxy, Connect-RPC / Protobuf transcoders, and embedded SQLite without cumbersome runtime dependencies.
+- 🚫 **Hide Default Auto Picker**: Protocol-level suppression of Cursor's client-side Auto toggle using `ModelPickerDisplayConfiguration` (`hide_routed_model_view = true` and `NoAutoButton {}`). Graceful fallback guarantees deterministic local routing.
+- 🏷️ **Intelligent Short Model Names**: Automatically extracts concise prefixes for models, preventing UI clipping in the Cursor model selector dropdown.
+- 🧪 **Model Management & Real-time Latency Ping**: Embedded console card to view, live-filter, and test upstream model connectivity with ultra-lightweight 8-token pings.
+- 🩺 **Integrated Log Viewer & System Diagnostics**: Direct web console view of `engine.log`, `supervisor.log`, and `supervisor-error.log` (last 80 lines) plus a one-click 5-point health check.
+- ⌨️ **Cursor Tab Dual-Mode Autocompletion**:
+  - **Official Token Mode (Recommended)**: Upstream routing across 16 specialized endpoints with dynamic checksum acceleration. One-click token extraction directly from local credentials.
+  - **Magpie Model Mode**: Routes Tab completions to designated coding LLMs.
+- 🤖 **Subagent (Task) Native Scheduling**: Full compatibility with Cursor Agent `Task` workflows; supports parent model inheritance and async background / sync blocking execution modes.
+- 🎯 **High KV Prefix Cache Hit Rate**: Checkpoint fingerprint tree maintains **49%+ cache hit rate**, significantly slashing token consumption and Time-To-First-Token (TTFB).
+- 💾 **Portable Storage & Live Migration**: Freely store `bridge.db` on any drive or external volume (e.g., Drive `E:\`). Automatic data synchronization and binding.
+- 🔄 **Zero Cursor Restarts Required**: Fixed proxy port `http://127.0.0.1:45678` allows instant runtime model and setting swaps without interrupting your workflow.
 
 ---
 
-## 📄 许可证
+### 🚀 Quick Start (English)
 
-本项目遵循 [MIT License](LICENSE) 开源协议。
+#### Method 1: Load directly in Magpie (Recommended)
+
+1. Open **Magpie Settings** -> **Plugin Management**;
+2. Click **"Add Local Plugin"** and select this directory;
+3. Enable **Cursor · Magpie Bridge** in the Magpie **Agents** tab and select your preferred model;
+4. Open the **Cursor Bridge Console** in the sidebar to configure Tab or database options;
+5. Enjoy your favorite models in Cursor immediately!
+
+#### Method 2: Command Line Setup
+
+```bash
+cd magpie-agent-cursor-bridge
+node install.js setup
+```
+
+The installer verifies SHA-256 binary integrity, provisions the local MITM CA certificate, and configures the background service.
+
+---
+
+## 📦 Directory Structure
+
+```text
+magpie-agent-cursor-bridge/
+├── bin/
+│   └── win32-x64/
+│       └── cursor-magpie-bridge.exe     # Standalone headless Rust proxy engine
+├── control/                             # Web Console UI & API Server
+│   ├── database.js                      # Direct SQLite inspection & maintenance
+│   ├── server.js                        # Control HTTP service (port 3580)
+│   ├── ui.html                          # Console web interface
+│   ├── ui.js                            # Interactive frontend logic
+│   └── ui.css                           # Console styling
+├── lib/                                 # Platform, config, and installation logic
+│   ├── bridge-settings.js               # Settings validator (bridge-settings.json)
+│   ├── config.js                        # Magpie connection & model parser
+│   ├── install.js                       # CA initialization & service management
+│   ├── platform.js                      # Cross-platform path abstraction
+│   └── settings.js                      # Cursor configuration patcher
+├── scripts/
+│   └── update-integrity.js              # Checksum calculation & integrity updater
+├── agent.js                             # Magpie Agent descriptor
+├── bridge.js                            # Background supervisor daemon
+├── install.js / setup.command           # One-click installation scripts
+├── integrity.json                       # Binary SHA-256 integrity manifest
+└── package.json                         # Plugin manifest & metadata
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).

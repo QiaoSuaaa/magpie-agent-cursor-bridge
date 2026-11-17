@@ -1,17 +1,19 @@
-# 更新日志 (CHANGELOG)
+# 更新日志 / CHANGELOG
 
-所有关于 **Cursor · Magpie 智能桥接** 的重要更新、功能演进与问题修复均记录于此。
+All notable changes to **Cursor · Magpie Bridge** will be documented in this file.  
+本项目的所有重要更新、功能演变与问题修复均记录于此。
 
 ---
 
 ## [v0.2.23] - 2026-11-17
 
-### 🎯 重点修复与体验强化
+### 🇨🇳 中文更新记录
+#### 🎯 重点修复与体验强化
 - **彻底消除 Cursor 客户端右下角默认 Auto 开关**：
   - 深入逆向 Cursor 模型选择器 Protobuf 协议，在 `AvailableModels` 的 Field 15 注入 `ModelPickerDisplayConfiguration`，下发 `hide_routed_model_view = true` 与空的 `named_view_to_routed_model_view_no_button = NoAutoButton {}`；
   - 彻底抹平 Cursor 界面右下角的 Auto 控件，根除 Cursor 启动后自动切换为 Auto 导致路由混乱的问题；
   - 原生引擎全面拦截所有可能携带的 `auto` 或 `default` 请求，平滑接管并无缝回退至本地首选模型。
-- **模型展示名短名化（Short Model Name）**：
+- **模型展示名智能短名化（Short Model Name）**：
   - 针对多段冗长模型名（如 `deepseek-ai/DeepSeek-V3 · 官方 · 亚太`），自动截取首段关键简称为短名，消除 Cursor 模型下拉列表中的文字截断与排版凌乱。
 - **控制台全新「模型管理与连通性测试」卡片**：
   - 控制台新增模型列表表格，清晰展示当前生效的所有模型 ID 与 Cursor 显示简称；
@@ -20,14 +22,32 @@
 - **控制台内嵌「日志查看器与一键全项自检」**：
   - 新增 `GET /api/logs` 端点，控制台内嵌实时日志窗口，可一键切换查看 `engine.log`、`supervisor.log`、`supervisor-error.log` 的最新 80 行内容，免去到文件夹翻找文件的繁琐；
   - 新增 `POST /api/selftest` 端点，一键检测控制服务、原生引擎与代理端口、MITM 根证书状态、数据库存储以及 Magpie 网关连通性 5 大核心环节，毫秒级定位运行异常。
-- **构建自动化工具**：
+- **构建自动化与完整性校验维护**：
   - 新增 `scripts/update-integrity.js`，一键自动完成二进制复制、SHA-256 哈希计算、`integrity.json` 更新与环境同步。
+
+### 🇬🇧 English Release Notes
+#### 🎯 Key Fixes & Feature Enhancements
+- **Completely Eliminate Cursor's Default Auto Picker**:
+  - Reverse-engineered Cursor's picker Protobuf protocol. Injected `ModelPickerDisplayConfiguration` at Field 15 of `AvailableModels`, broadcasting `hide_routed_model_view = true` along with an empty `named_view_to_routed_model_view_no_button = NoAutoButton {}`.
+  - Completely hides the client-side "Auto" button, preventing Cursor from resetting to Auto mode upon startup.
+  - Native engine now catches any incoming `auto` / `default` requests and transparently routes them to the user's primary selected model.
+- **Intelligent Short Model Names**:
+  - Automatically extracts the concise prefix for multi-part model IDs (e.g., `deepseek-v3` instead of lengthy supplier/region metadata), preventing UI overflow and text truncation in the Cursor model dropdown.
+- **Console Model Management & Latency Ping**:
+  - Added an interactive model management card to the bridge console showing active model IDs and concise Cursor display names.
+  - Independent **"Test"** button for each model: sends an ultra-lightweight 8-token request to Magpie, returning millisecond-level latency (e.g. `🟢 168ms`) or precise error status.
+  - Supports live fuzzy search and one-click batch testing for all configured models.
+- **Real-time Log Viewer & One-Click System Health Check**:
+  - Added `GET /api/logs` endpoint with an embedded log viewer in the web UI. Easily switch between `engine.log`, `supervisor.log`, and `supervisor-error.log` without browsing system directories.
+  - Added `POST /api/selftest` endpoint: one-click diagnostics covering Control Service, Native Engine/Proxy, CA Certificate, SQLite Database, and Magpie Gateway connectivity.
+- **Build Automation**:
+  - Added `scripts/update-integrity.js` to automatically calculate SHA-256 binary checksums, update `integrity.json`, and synchronize with local active installation directories.
 
 ---
 
 ## [v0.2.22] - 2026-11-17
 
-### 🚀 架构优化与品牌升级
+### 🇨🇳 中文更新记录
 - **全面更名为「Cursor · Magpie 智能桥接」**：
   - 插件名称、侧边栏标题、控制台界面及 Agent 选项全量规范化为「Cursor · Magpie 智能桥接」，更具辨识度与中文亲和力。
 - **全平台自适应路径统一（消除沙箱跨平台误判）**：
@@ -37,11 +57,21 @@
 - **配置目录自动预创建与防御性容错**：
   - 在插件宿主初始化（`host.js`）及安装入口（`install.js`）加入自动预创建机制，新电脑首次安装插件无需手动点击，环境目录即刻就绪。
 
+### 🇬🇧 English Release Notes
+- **Official Branding Update to "Cursor · Magpie Bridge"**:
+  - Unified plugin name, console UI titles, and Magpie Agent menu items across the entire suite.
+- **Universal Adaptive Path Resolution (Sandbox Isolation Fix)**:
+  - Resolved a critical issue where running `agent.js` inside Magpie's isolated sandbox lacked `process.platform`, causing false fallbacks to macOS `/Applications/Cursor.app` and hiding the plugin on Windows/Linux.
+  - Aligned with Magpie ecosystem standards by pointing `agent.dir` and `agent.config` to `~/.config/magpie-cursor-bridge`.
+  - Works reliably across Windows (any drive), macOS, and Linux regardless of custom Cursor installation paths.
+- **Automatic Directory Provisioning**:
+  - Added automated pre-creation of required configuration and runtime folders on clean installations.
+
 ---
 
 ## [v0.2.21] - 2026-11-16
 
-### 🚀 新增功能
+### 🇨🇳 中文更新记录
 - **Cursor Tab 智能代码补全（双模加速）**：
   - 官方 Token 极速模式：支持 16 个上游端点精准分流（`StreamCpp`, `FSSyncFile`, `RecordCppFate` 等），自动计算动态 Checksum 并隔离生成，控制台支持“一键提取本机 Cursor 登录凭据”；
   - Magpie 模型补全模式：支持将 Tab 代码补全请求定向调度至在 Magpie 接入的任意代码模型（如 DeepSeek、GPT-6.1-Sol 等）；
@@ -52,59 +82,25 @@
   - 完整兼容 Cursor Agent 模式下的 `Task` 工具派发与多轮子代理流转；
   - 支持子代理自动继承父对话模型（`inherit` / `default`）；
   - 控制台支持【异步后台（默认）】与【同步阻塞（`run_in_background=false`）】双模式切换。
-
-### 🛠️ 优化与问题修复
-- **修复状态读取永久卡死在「读取状态…」的隐蔽 Bug**：
-  - 根因定位：原先控制服务在每次重启时都会随机重新生成 Token，而旧页面持有旧 Token 请求会返回 403；原前端在处理该错误时执行了 `return new Promise(() => {})` 导致整个前端请求永久挂死（Pending）；
-  - 彻底解决：
-    1. 服务端将控制口令持久化存储在 `control-token.txt`，保证服务重启后 Token 恒定不失效；
-    2. 前端引入自动 Token 静默无缝换取与重发机制，一旦偶发 403 立即毫秒级拉取新 Token 自动重试，彻底删除挂死死循环；
-    3. 移除了高频查询中对慢速 PowerShell 的依赖，接口响应提速至 36 毫秒。
+- **修复状态读取卡死在「读取状态…」的隐蔽 Bug**：
+  - 将控制口令持久化存储在 `control-token.txt`，保证服务重启后 Token 恒定不失效；
+  - 前端引入自动 Token 静默无缝换取与重试机制，彻底杜绝 403 挂死；接口响应提速至 36 毫秒。
 - **修复 Tab 配置保存无反应问题**：
-  - 将保存按钮改为原生 `type="button"` 并显式绑定原生 `click` 监听事件，彻底规避内嵌 WebView 中因 CSP `form-action` 策略导致的表单提交静默阻断；
-  - 保存成功后增加全局悬浮绿色通知（Notice）；对表单各项输入增加严谨的空值与异常保护。
-- **修复 Axum 路由重叠 Panic**：
-  - 消除 `WriteGitCommitMessage` 等端点的路由冲突，通过全量 310 项单元测试（100% 通过）。
-- **优化免重启体验与文案提示**：
-  - 明确第一性原理：代理端口固定为 `127.0.0.1:45678`，模型切换与 Tab 设置变更均为代理内部秒级热生效，日常使用 100% 无需重启 Cursor；
-  - 若初次配置需刷新网络栈，提示在 Cursor 按 `Ctrl+Shift+P` 运行 `Developer: Reload Window`（重载窗口，1秒）即可。
+  - 避免内嵌 WebView 中的表单提交拦截，改用原生按钮事件监听并提供全局绿色悬浮通知。
 
----
-
-## [v0.2.20] - 2026-11-16
-
-### ⚡ 核心改进
-- **模型目录实时热同步**：
-  - 控制台新增“同步模型”功能，无需重启桥接即可从 Magpie 网关实时拉取最新开启/关闭的模型列表并热更新至本地数据库；
-  - 修复多并发控制台会话下的模型缓存同步问题。
-
----
-
-## [v0.2.19] - 2026-11-16
-
-### 📊 数据库管理
-- **直读 SQLite 分析与维护**：
-  - 修复 Windows 环境下因外部缺少 `sqlite3.exe` 导致数据库统计失败的问题，重构为 Node 直读 SQLite 数据库文件与物理分析；
-  - 控制台按会话、检查点、运行记录、调用日志、Blob 详细展示存储占用与天数分布；
-  - 提供清理模型调用日志、清理 N 天前历史会话、仅压缩数据库（VACUUM 回收磁盘碎片）与清空全部运行数据等安全功能。
-
----
-
-## [v0.2.18] - 2026-11-15
-
-### 💾 便携存储与协议增强
-- **真正的绿色便携数据库（Portable Data）**：
-  - 支持跨盘符（如 E 盘、D 盘、移动存储设备）自由绑定数据目录；
-  - 控制台新增“数据存储与迁移”能力：支持输入目标目录进行热迁移，空目录自动复制现有数据，已有数据目录直接安全挂载；
-  - 自动继承 Cursor BYOK 历史 `data_location.txt` 指针配置。
-- **BidiAppend 二进制编码支持**：
-  - 兼容 Cursor 3.29+ 的最新双向流编码（`data_binary`）。
-
----
-
-## [v0.2.17 及早期版本]
-
-### 🌟 基础能力构建
-- **超高前缀缓存（KV Cache）**：完整实现 Checkpoint 增量指纹维持算法，稳定维持 49%+ 缓存命中率；
-- **Rust 原生无头拦截引擎**：高性能 Connect-RPC / Protobuf 协议转码，毫秒级响应；
-- **无感证书接管**：内置跨平台自签 CA 证书生成与系统信任导入，启停随心，退出自动还原原始代理。
+### 🇬🇧 English Release Notes
+- **Cursor Tab Autocomplete (Dual Accelerated Modes)**:
+  - **Official Token High-Speed Mode**: Precision upstream routing across 16 specialized endpoints with dynamic checksum acceleration. One-click token extraction directly in the console.
+  - **Magpie Model Autocomplete Mode**: Forward Tab code completions to any configured Magpie model (e.g., DeepSeek, GPT-6.1-Sol).
+  - Also added Direct, Custom Server, and Public Service modes.
+- **Full Model Selection**:
+  - Tab completion model selector now lists all gateway-connected models alongside the default coding model.
+- **Subagent (Task) Deep Integration**:
+  - Full support for Cursor Agent mode `Task` tool invocations and multi-turn workflows.
+  - Automatic model inheritance from parent conversations.
+  - Console support for switching between Asynchronous Background (recommended) and Synchronous Blocking modes.
+- **Fix "Reading status..." Infinite Loading Loop**:
+  - Persisted control tokens in `control-token.txt` to maintain validity across service restarts.
+  - Implemented silent token refresh on 403 errors and accelerated status queries to ~36ms.
+- **Fix Tab Settings Save Glitch**:
+  - Resolved form submission interception in embedded WebViews using explicit button event listeners and toast notifications.
