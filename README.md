@@ -56,9 +56,9 @@
 
 ### 🏗️ 架构与运行原理
 
-> **参考致谢 / Acknowledgment**：本项目基于社区优秀开源项目 [cursor-byok](https://github.com/cursor-byok/cursor-byok) 进行深度重构与功能扩展。特别感谢原作者为逆向 Cursor 通信协议与实现本地代理所做出的贡献。我们在此基础上优化了性能、增强了桥接协议的稳定性，并增加了针对 Magpie 生态的适配与可视化控制台。
+> **参考致谢 / Acknowledgment**：本项目基于社区优秀开源项目 [cursor-byok](https://github.com/leookun/cursor-byok) 进行深度重构与功能扩展。特别感谢原作者为逆向 Cursor 通信协议与实现本地代理所做出的贡献。我们在此基础上优化了性能、增强了桥接协议的稳定性，并增加了针对 Magpie 生态的适配与可视化控制台。
 > 
-> *This project is based on the excellent open-source project [cursor-byok](https://github.com/cursor-byok/cursor-byok). We deeply appreciate the original author's pioneering work on reverse-engineering Cursor's protocol and implementing the local proxy. We have since optimized performance, enhanced stability, and added Magpie-specific integrations and a visual management console.*
+> *This project is based on the excellent open-source project [cursor-byok](https://github.com/leookun/cursor-byok). We deeply appreciate the original author's pioneering work on reverse-engineering Cursor's protocol and implementing the local proxy. We have since optimized performance, enhanced stability, and added Magpie-specific integrations and a visual management console.*
 
 ```text
 ┌──────────────┐          Protobuf / Connect-RPC           ┌────────────────────────────────────────┐
