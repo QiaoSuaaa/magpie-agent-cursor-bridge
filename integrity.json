@@ -1,6 +1,6 @@
 {
-  "version": "0.2.22",
-  "engineVersion": "0.2.22",
+  "version": "0.2.23",
+  "engineVersion": "0.2.23",
   "engine": "9da844e26f2d98b6603bf0e4b5628eb49ef2e8932016bf3e4fef9891660d93a0",
   "platforms": {
     "darwin-arm64": "c021fa6cfc4a01fc8567597bbd8ec096a4eb2261e5173e2f3875ea89faf2d6fc",
