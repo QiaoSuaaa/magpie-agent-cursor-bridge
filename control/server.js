@@ -25,6 +25,8 @@ const TOKEN_HEADER = 'x-magpiebridge-token';
 const LABEL = 'local.magpie.cursor-bridge';
 const MAX_BODY = 16 * 1024;
 const ACTION_TIMEOUT = 180000;
+let busy = null;
+let busyAt = 0;
 
 function resolveDataDir(root, home) {
   if (process.env.CURSOR_BYOK_DATA_DIR && process.env.CURSOR_BYOK_DATA_DIR.trim()) {
@@ -944,8 +946,15 @@ export function createControlServer({repoRoot, port, log = console.log}) {
         if (!['start', 'status', 'restart'].includes(action)) {
           return sendJson(res, 400, {ok: false, error: `未知操作：${action || '空'}`});
         }
+        // 增加对繁忙状态的强制过期机制
+        if (busy && Date.now() - busyAt > 30000) {
+            log(`检测到执行任务超时卡死，强制释放 busy 锁: ${busy}`);
+            busy = null;
+            busyAt = 0;
+        }
         if (busy) return sendJson(res, 409, {ok: false, error: `正在执行「${busy}」，请稍候`});
         busy = action;
+        busyAt = Date.now();
         log(`control action: ${action}`);
         try {
           let result;
