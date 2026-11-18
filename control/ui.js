@@ -1022,12 +1022,18 @@
     if (btnMigrate) {
       btnMigrate.addEventListener('click', async () => {
         const input = $('targetStorageDir');
-        const targetDir = (input?.value || '').trim();
+        let targetDir = (input?.value || '').trim();
+
+        // 尝试引导用户更直观的输入方式
         if (!targetDir) {
-          alert('请输入目标数据目录路径（例如 E:\\curosrbyokdb）');
-          return;
+           const promptVal = prompt('请输入目标数据目录路径（例如 E:\\cursor_data），若目录不存在将自动创建：', 'E:\\cursor_data');
+           if (!promptVal) return;
+           targetDir = promptVal.trim();
+           input.value = targetDir;
         }
-        if (!confirm(`确定将数据目录切换/迁移到：\n${targetDir}\n\n若目录已有数据库将直接绑定，若为空将自动复制现有数据并重启服务。`)) return;
+
+        if (!confirm(`确定将数据目录切换/迁移到：\n${targetDir}\n\n若目录为空将自动初始化，若已有数据将直接绑定并重启。`)) return;
+        
         btnMigrate.disabled = true;
         btnMigrate.textContent = '处理中...';
         try {
@@ -1036,9 +1042,9 @@
             body: { targetDir }
           });
           if (res.ok) {
-            alert('数据目录切换/迁移成功！已绑定至：' + res.targetDir);
+            alert('数据目录切换/迁移成功！服务正在重启…');
             input.value = '';
-            await loadStatus();
+            window.location.reload();
           } else {
             alert('操作失败：' + (res.error || '未知错误'));
           }
