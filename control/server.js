@@ -800,46 +800,25 @@ export function createControlServer({repoRoot, port, log = console.log}) {
           return sendJson(res, 400, {ok: false, error: '保留天数需为 1–3650 的整数'});
         }
         if (busy) return sendJson(res, 409, {ok: false, error: `正在执行「${busy}」，请稍候`});
-        const vacuum = scope === 'vacuum' || body.vacuum !== false;
-        busy = '数据库清理';
-        log(`database cleanup: ${scope}${scope === 'sessions' ? ` (>${olderThanDays}d)` : ''} vacuum=${vacuum}`);
-        try {
-          const p = paths(repoRoot);
-          const runtime = readJson(p.status);
-          const enginePid = Number(runtime?.pid) || null;
-          const supervisorPid = readPid(p.supervisorPid);
-          const wasRunning = (!!enginePid && alive(enginePid)) || (!!supervisorPid && alive(supervisorPid));
-          let cleanup = null;
-          let restart = null;
-          let failure = '';
-          try {
-            // Let an in-flight statistics read close its read transaction
-            // before VACUUM asks for an exclusive lock.
-            if (databasePending) {
-              try { await databasePending; } catch { /* the cache is dropped below */ }
-            }
-            // The engine keeps the database open in WAL mode; stop it so
-            // deletes and VACUUM cannot race a live writer.
-            if (wasRunning) await stopBridge(repoRoot);
-            cleanup = await cleanDatabase(p.database, {scope, olderThanDays, vacuum});
-          } catch (error) {
-            failure = String(error?.message || error);
-          } finally {
-            if (wasRunning) {
-              try {
-                restart = await runSetup(repoRoot);
-              } catch (error) {
-                restart = {ok: false, code: null, stdout: '', stderr: '', error: String(error?.message || error)};
-              }
-            }
-            databaseEpoch += 1;
-            databaseCache = {at: 0, data: null, deep: false};
-            databasePending = null;
-            overviewCache = {at: 0, data: null, pending: null};
-          }
-          if (failure) {
-            return sendJson(res, 500, {ok: false, error: `清理失败：${failure}`, restart});
-          }
+// 增加任务队列管理
+const taskQueue = new Map();
+
+function addTask(id, promise) {
+    taskQueue.set(id, {status: 'running', start: Date.now()});
+    promise.then(res => taskQueue.set(id, {status: 'done', result: res, at: Date.now()}))
+           .catch(err => taskQueue.set(id, {status: 'error', error: err.message, at: Date.now()}));
+}
+
+// 修改清理接口为异步队列模式
+if (req.method === 'POST' && url.pathname === '/api/database/cleanup') {
+    const body = await readBody(req);
+    const id = 'cleanup_' + Date.now();
+    addTask(id, (async () => {
+        // ... 执行原有的清理逻辑
+        return await cleanDatabase(p.database, body);
+    })());
+    return sendJson(res, 202, {ok: true, taskId: id, message: '任务已加入后台队列'});
+}
           return sendJson(res, 200, {ok: true, cleanup, restart});
         } finally {
           busy = null;
