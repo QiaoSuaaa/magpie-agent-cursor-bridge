@@ -53,6 +53,7 @@ function resolveDataDir(root, home) {
 }
 
 function resolveDatabaseFile(dataDir) {
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   const bridgeDb = path.join(dataDir, 'bridge.db');
   const byokDb = path.join(dataDir, 'cursor-byok.db');
   if (fs.existsSync(bridgeDb)) return bridgeDb;
