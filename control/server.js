@@ -800,28 +800,21 @@ export function createControlServer({repoRoot, port, log = console.log}) {
           return sendJson(res, 400, {ok: false, error: '保留天数需为 1–3650 的整数'});
         }
         if (busy) return sendJson(res, 409, {ok: false, error: `正在执行「${busy}」，请稍候`});
-// 增加任务队列管理
-const taskQueue = new Map();
-
-function addTask(id, promise) {
-    taskQueue.set(id, {status: 'running', start: Date.now()});
-    promise.then(res => taskQueue.set(id, {status: 'done', result: res, at: Date.now()}))
-           .catch(err => taskQueue.set(id, {status: 'error', error: err.message, at: Date.now()}));
-}
-
-// 修改清理接口为异步队列模式
-if (req.method === 'POST' && url.pathname === '/api/database/cleanup') {
-    const body = await readBody(req);
-    const id = 'cleanup_' + Date.now();
-    addTask(id, (async () => {
+        // 清理数据库：加忙碌锁，执行完毕后释放并让统计缓存失效
+        const p = paths(repoRoot);
+        busy = '清理数据库';
         try {
-            return await cleanDatabase(p.database, body);
+          const cleanup = await cleanDatabase(p.database, {scope, olderThanDays, vacuum: body.vacuum !== false});
+          databaseEpoch += 1;
+          databaseCache = {at: 0, data: null, deep: false};
+          log(`database cleanup: ${scope}`);
+          return sendJson(res, 200, {ok: true, cleanup});
+        } catch (error) {
+          return sendJson(res, 500, {ok: false, error: `清理失败：${error.message}`});
         } finally {
-            busy = null;
+          busy = null;
         }
-    })());
-    return sendJson(res, 202, {ok: true, taskId: id, message: '任务已加入后台队列'});
-}
+      }
 
       if (req.method === 'POST' && url.pathname === '/api/storage/migrate') {
         const body = await readBody(req);
