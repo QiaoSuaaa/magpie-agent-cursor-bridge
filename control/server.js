@@ -814,16 +814,14 @@ if (req.method === 'POST' && url.pathname === '/api/database/cleanup') {
     const body = await readBody(req);
     const id = 'cleanup_' + Date.now();
     addTask(id, (async () => {
-        // ... 执行原有的清理逻辑
-        return await cleanDatabase(p.database, body);
+        try {
+            return await cleanDatabase(p.database, body);
+        } finally {
+            busy = null;
+        }
     })());
     return sendJson(res, 202, {ok: true, taskId: id, message: '任务已加入后台队列'});
 }
-          return sendJson(res, 200, {ok: true, cleanup, restart});
-        } finally {
-          busy = null;
-        }
-      }
 
       if (req.method === 'POST' && url.pathname === '/api/storage/migrate') {
         const body = await readBody(req);
