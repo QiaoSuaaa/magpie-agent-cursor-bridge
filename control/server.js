@@ -700,7 +700,8 @@ export function createControlServer({repoRoot, port, log = console.log}) {
 
         const gateway = String(config.gateway).replace(/\/+$/, '');
         const apiKey = config.key || '';
-        const targetUrl = `${gateway}/v1/chat/completions`;
+        // 如果网关地址自带了 /v1，则不再重复拼接，否则补全 /v1
+        const targetUrl = gateway.endsWith('/v1') ? `${gateway}/chat/completions` : `${gateway}/v1/chat/completions`;
 
         const startAt = Date.now();
         const controller = new AbortController();
