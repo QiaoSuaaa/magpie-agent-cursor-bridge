@@ -120,10 +120,10 @@
     $('open').addEventListener('click', openConsole);
     $('save').addEventListener('click', savePort);
     $('reset').addEventListener('click', async () => {
-      if(confirm('确定要清除所有缓存和代理设置吗？')) {
+      if(confirm('⚠️ 警告：此操作将重置所有桥接状态、删除代理缓存，且需要重新连接。确定要继续吗？')) {
         try {
           await magpie.bridge.command('reset-all');
-          $('hint').textContent = '已发送重置命令。';
+          $('hint').textContent = '已发送重置命令，请重启客户端。';
         } catch(e) {
           $('hint').textContent = '重置失败：' + e.message;
         }

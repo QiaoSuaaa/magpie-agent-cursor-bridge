@@ -358,9 +358,12 @@ function capture(child, resolve) {
   child.stdout?.on('data', (chunk) => { stdout = clip(stdout + chunk); });
   child.stderr?.on('data', (chunk) => { stderr = clip(stderr + chunk); });
   child.once('error', (error) => finish({ok: false, code: null, error: String(error.message || error)}));
-  child.once('close', (code) => finish(code === 0
-    ? {ok: true, code: 0, error: ''}
-    : {ok: false, code, error: `命令退出码 ${code ?? '未知'}`}));
+  child.once('close', (code) => {
+    if (code === 0) return finish({ok: true, code: 0, error: ''});
+    // 失败时把 stderr 末尾几行并入错误信息，面板直接显示真实原因而不是只有退出码
+    const reason = stderr.trim().split(/\r?\n/).slice(-15).join('\n');
+    finish({ok: false, code, error: reason ? `命令退出码 ${code ?? '未知'}：${reason}` : `命令退出码 ${code ?? '未知'}`});
+  });
   timer = setTimeout(() => {
     if (settled) return;
     try { child.kill('SIGTERM'); } catch {}
@@ -995,7 +998,15 @@ export function createControlServer({repoRoot, port, log = console.log}) {
             engineOk = true;
             engineDetail = `代理端口 127.0.0.1:${runtime.proxy || 45678} · PID ${enginePid} · 状态: ${runtime.state || 'connected'}`;
           } else if (supervisorAlive) {
-            engineDetail = `守护进程 PID ${readPid(p.supervisorPid)} 存活，但原生引擎未在运行`;
+            // 尝试读取可能的错误日志
+            let errorMsg = '';
+            try {
+              if (fs.existsSync(p.supervisorError)) {
+                const logs = fs.readFileSync(p.supervisorError, 'utf8').trim();
+                if (logs) errorMsg = ` · 错误: ${logs.slice(-200)}`;
+              }
+            } catch {}
+            engineDetail = `守护进程 PID ${readPid(p.supervisorPid)} 存活，但原生引擎未在运行${errorMsg}`;
           } else {
             engineDetail = '原生引擎未运行，请在控制台上方点击「启动」';
           }
