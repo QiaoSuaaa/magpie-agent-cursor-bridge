@@ -129,6 +129,33 @@
         }
       }
     });
+    // 添加清空全部运行数据的确认弹窗
+    const clearBtn = document.getElementById('clear');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', async () => {
+        if(confirm('⚠️ 警告：此操作将彻底清空本地缓存、数据库文件和配置文件，不可恢复。确定要执行吗？')) {
+          try {
+            await magpie.bridge.command('clear-all');
+            $('hint').textContent = '已发送清空数据命令，请重启客户端。';
+          } catch(e) {
+            $('hint').textContent = '清空失败：' + e.message;
+          }
+        }
+      });
+    }
+    // 自动扫描并切换端口
+    $('auto-port').addEventListener('click', async () => {
+      $('hint').textContent = '正在检测可用端口…';
+      try {
+        // 请求后台扫描可用端口
+        const nextPort = await magpie.bridge.command('find-free-port');
+        $('port').value = nextPort;
+        await savePort();
+        $('hint').textContent = `已自动切换至空闲端口: ${nextPort}`;
+      } catch(e) {
+        $('hint').textContent = '自动切换失败：' + e.message;
+      }
+    });
     $('port').addEventListener('keydown', (event) => {
       if (event.key === 'Enter') savePort();
     });
