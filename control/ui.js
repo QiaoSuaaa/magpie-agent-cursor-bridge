@@ -988,6 +988,23 @@
       $('testAllModelsBtn').addEventListener('click', testAllModels);
     }
 
+    if ($('btnResetState')) {
+      $('btnResetState').addEventListener('click', async () => {
+        if (!confirm('⚠️ 警告：强制重置将彻底删除所有运行数据（数据库、检查点），插件将自动重启并回到初始安装状态。确定要重置吗？')) return;
+        try {
+          const res = await api('/api/action', {method: 'POST', body: {action: 'reset'}});
+          if (res.ok) {
+            notice('重置成功，正在重启插件…', 'ok');
+            setTimeout(() => window.location.reload(), 1000);
+          } else {
+            notice(`重置失败：${res.error}`, 'error');
+          }
+        } catch (err) {
+          notice(`重置请求失败：${err.message}`, 'error');
+        }
+      });
+    }
+
     // 绑定运行自检与实时日志交互
     if ($('runSelftestBtn')) $('runSelftestBtn').addEventListener('click', runSelftest);
     if ($('refreshLogsBtn')) $('refreshLogsBtn').addEventListener('click', loadLogs);

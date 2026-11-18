@@ -928,6 +928,19 @@ export function createControlServer({repoRoot, port, log = console.log}) {
       if (req.method === 'POST' && url.pathname === '/api/action') {
         const body = await readBody(req);
         const action = String(body.action || '');
+        if (action === 'reset') {
+            const p = paths(repoRoot);
+            try {
+                // 删除整个数据目录 (慎重：这会重置所有状态)
+                if (fs.existsSync(p.data)) fs.rmSync(p.data, { recursive: true, force: true });
+                // 停止并清理状态
+                await stopBridge(repoRoot);
+                log('control action: reset (data wiped)');
+                return sendJson(res, 200, { ok: true, action: 'reset', message: '状态已重置，数据目录已清空' });
+            } catch (err) {
+                return sendJson(res, 500, { ok: false, error: `重置失败: ${err.message}` });
+            }
+        }
         if (!['start', 'status', 'restart'].includes(action)) {
           return sendJson(res, 400, {ok: false, error: `未知操作：${action || '空'}`});
         }
