@@ -1081,11 +1081,13 @@ export function createControlServer({repoRoot, port, log = console.log}) {
             gwDetail = '未找到 Magpie 网关连接配置';
           } else {
             const gateway = String(config.gateway).replace(/\/+$/, '');
+            // 网关地址可能已自带 /v1，统一得到 /v1 基址，避免拼成 /v1/v1 导致 404
+            const apiBase = gateway.endsWith('/v1') ? gateway : `${gateway}/v1`;
             const activeModel = config.model || (Array.isArray(config.models) && (config.models[0]?.id || config.models[0]?.name)) || 'default';
             if (withModel) {
               const controller = new AbortController();
               const timer = setTimeout(() => controller.abort(), 10000);
-              const resp = await fetch(`${gateway}/v1/chat/completions`, {
+              const resp = await fetch(`${apiBase}/chat/completions`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1108,7 +1110,7 @@ export function createControlServer({repoRoot, port, log = console.log}) {
             } else {
               const controller = new AbortController();
               const timer = setTimeout(() => controller.abort(), 5000);
-              const resp = await fetch(`${gateway}/v1/models`, {
+              const resp = await fetch(`${apiBase}/models`, {
                 headers: { 'Authorization': `Bearer ${config.key || ''}` },
                 signal: controller.signal
               }).finally(() => clearTimeout(timer));
